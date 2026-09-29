@@ -1450,6 +1450,13 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * Speaks a single Kanji character or compound with optional reading fallback.
+     */
+    fun speakKanji(kanji: String, reading: String? = null, rate: Float? = null) {
+        ttsHelper.speakKanji(kanji, reading, rate)
+    }
+
+    /**
      * Speaks the card according to preferences (phonetic kana vs natural kanji).
      */
     fun speakCard(card: VocabCard, preferPhonetic: Boolean? = null, rate: Float? = null) {

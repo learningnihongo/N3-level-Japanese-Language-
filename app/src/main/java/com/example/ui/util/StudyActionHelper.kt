@@ -190,11 +190,35 @@ object StudyActionHelper {
      */
     private var sharedTts: TtsHelper? = null
 
-    fun speakText(context: Context, text: String) {
+    fun speakText(context: Context, text: String, rate: Float? = null) {
         if (text.isBlank()) return
         if (sharedTts == null) {
             sharedTts = TtsHelper(context.applicationContext)
         }
-        sharedTts?.speak(text)
+        sharedTts?.speak(text, rate)
+    }
+
+    fun speakKanji(context: Context, kanji: String, reading: String? = null, rate: Float? = null) {
+        if (kanji.isBlank()) return
+        if (sharedTts == null) {
+            sharedTts = TtsHelper(context.applicationContext)
+        }
+        sharedTts?.speakKanji(kanji, reading, rate)
+    }
+
+    fun speakSlow(context: Context, text: String) {
+        if (text.isBlank()) return
+        if (sharedTts == null) {
+            sharedTts = TtsHelper(context.applicationContext)
+        }
+        sharedTts?.speakSlow(text)
+    }
+
+    fun speakSentence(context: Context, sentence: String) {
+        if (sentence.isBlank()) return
+        if (sharedTts == null) {
+            sharedTts = TtsHelper(context.applicationContext)
+        }
+        sharedTts?.speakSentence(sentence)
     }
 }

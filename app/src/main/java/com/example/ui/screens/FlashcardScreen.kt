@@ -216,6 +216,10 @@ fun FlashcardScreen(
     var currentIndex by remember { mutableIntStateOf(0) }
     var isFlipped by remember { mutableStateOf(false) }
     var showRomajiHint by remember { mutableStateOf(false) }
+    var autoSpeakEnabled by remember { mutableStateOf(true) }
+
+    val isSpeaking by ttsHelper.isSpeaking.collectAsState()
+    val speechRate by ttsHelper.speechRate.collectAsState()
 
     val currentCard = deck.getOrNull(currentIndex) ?: SAMPLE_N3_FLASHCARDS.first()
 
@@ -224,6 +228,24 @@ fun FlashcardScreen(
         currentIndex = 0
         isFlipped = false
         showRomajiHint = false
+    }
+
+    // Auto-pronounce Japanese Kanji and Vocabulary upon card change or flip
+    LaunchedEffect(currentIndex, isFlipped, autoSpeakEnabled) {
+        if (autoSpeakEnabled) {
+            if (!isFlipped) {
+                ttsHelper.speakCard(currentCard)
+            } else {
+                kotlinx.coroutines.delay(180)
+                ttsHelper.speakPhonetic(currentCard.reading.ifBlank { currentCard.kanji })
+            }
+        }
+    }
+
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            ttsHelper.stop()
+        }
     }
 
     fun goToNextCard() {
@@ -307,6 +329,42 @@ fun FlashcardScreen(
                     }
                 },
                 actions = {
+                    // Auto-Pronounce TTS Toggle Button
+                    IconButton(
+                        onClick = { autoSpeakEnabled = !autoSpeakEnabled },
+                        modifier = Modifier
+                            .testTag("flashcard_auto_tts_toggle")
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = if (autoSpeakEnabled) "Auto-Pronounce On" else "Auto-Pronounce Off",
+                            tint = if (autoSpeakEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    }
+
+                    // TTS Speech Speed Chip Button
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { ttsHelper.toggleSpeechRate() }
+                            .testTag("flashcard_tts_speed_toggle")
+                    ) {
+                        Text(
+                            text = when (speechRate) {
+                                in 0.7f..0.8f -> "0.75x"
+                                in 1.1f..1.3f -> "1.15x"
+                                else -> "1.0x"
+                            },
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = { shuffleDeck() },
                         modifier = Modifier
@@ -438,6 +496,10 @@ fun FlashcardScreen(
                         showRomaji = showRomajiHint,
                         onToggleRomaji = { showRomajiHint = !showRomajiHint },
                         onSpeak = { ttsHelper.speakCard(currentCard) },
+                        onSpeakSlow = { ttsHelper.speakSlow(currentCard.reading.ifBlank { currentCard.kanji }) },
+                        onSpeakReading = { ttsHelper.speakPhonetic(currentCard.reading.ifBlank { currentCard.kanji }) },
+                        onSpeakKanji = { kanjiChar -> ttsHelper.speakKanji(kanjiChar) },
+                        isSpeaking = isSpeaking,
                         onBookmark = { toggleBookmark() },
                         onFlip = { isFlipped = true },
                         isCollocationDeck = selectedFilter == FlashcardDeckFilter.COLLOCATIONS,
@@ -452,6 +514,8 @@ fun FlashcardScreen(
                         onSpeakReading = { ttsHelper.speakPhonetic(currentCard.reading.ifBlank { currentCard.kanji }) },
                         onSpeakSlow = { ttsHelper.speakSlow(currentCard.reading.ifBlank { currentCard.kanji }) },
                         onSpeakSentence = { ttsHelper.speakSentence(currentCard.exampleSentence) },
+                        onSpeakKanji = { kanjiChar -> ttsHelper.speakKanji(kanjiChar) },
+                        isSpeaking = isSpeaking,
                         onBookmark = { toggleBookmark() },
                         onFlip = { isFlipped = false },
                         onOpenCompoundLookup = { showCompoundSheet = true },
@@ -564,6 +628,10 @@ private fun FlashcardFrontView(
     showRomaji: Boolean,
     onToggleRomaji: () -> Unit,
     onSpeak: () -> Unit,
+    onSpeakSlow: (() -> Unit)? = null,
+    onSpeakReading: (() -> Unit)? = null,
+    onSpeakKanji: ((String) -> Unit)? = null,
+    isSpeaking: Boolean = false,
     onBookmark: () -> Unit,
     onFlip: () -> Unit,
     isCollocationDeck: Boolean = false,
@@ -572,6 +640,10 @@ private fun FlashcardFrontView(
 ) {
     val collocations = remember(card.kanji) {
         CollocationData.getCollocationsForWord(card.kanji)
+    }
+
+    val extractedKanji = remember(card.kanji) {
+        StudyActionHelper.extractKanjiCharacters(card.kanji)
     }
 
     val relatedCompounds = remember(card.kanji, allCards) {
@@ -683,12 +755,40 @@ private fun FlashcardFrontView(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        // Slow Pronunciation Chip (0.7x)
+                        if (onSpeakSlow != null) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { onSpeakSlow() }
+                                    .testTag("flashcard_front_slow_btn")
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Speed,
+                                        contentDescription = "Slow Pronunciation",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text("0.7x", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+
+                        // Main Pronounce Word Button
                         FilledIconButton(
                             onClick = onSpeak,
                             shape = CircleShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
-                                contentColor = MaterialTheme.colorScheme.primary
+                                containerColor = if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                                contentColor = if (isSpeaking) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                             ),
                             modifier = Modifier
                                 .size(38.dp)
@@ -720,7 +820,7 @@ private fun FlashcardFrontView(
                 // 2. Main Center Kanji Focus Area
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
@@ -761,20 +861,86 @@ private fun FlashcardFrontView(
                         }
                     }
 
-                    // Display Japanese Kanji in massive, sharp typography
+                    // Display Japanese Kanji in massive, sharp typography (Clickable with Audio Ripple)
                     val displayKanji = if (isCollocationDeck && card.exampleSentence.contains("［")) card.exampleSentence else card.kanji
-                    Text(
-                        text = displayKanji,
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontFamily = JapaneseFontFamily,
-                            fontSize = if (displayKanji.length > 7) 26.sp else if (displayKanji.length > 4) 34.sp else 48.sp,
-                            lineHeight = if (displayKanji.length > 7) 32.sp else 54.sp
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.testTag("flashcard_front_kanji")
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onSpeak() }
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = displayKanji,
+                            style = MaterialTheme.typography.displayMedium.copy(
+                                fontFamily = JapaneseFontFamily,
+                                fontSize = if (displayKanji.length > 7) 26.sp else if (displayKanji.length > 4) 34.sp else 48.sp,
+                                lineHeight = if (displayKanji.length > 7) 32.sp else 54.sp
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.testTag("flashcard_front_kanji")
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = "အသံထွက် နားဆင်ရန် နှိပ်ပါ (Tap to pronounce)",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+
+                    // Individual Kanji Breakdown Pills with TTS audio
+                    if (extractedKanji.isNotEmpty() && !isCollocationDeck) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            extractedKanji.forEach { kanjiChar ->
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { onSpeakKanji?.invoke(kanjiChar.toString()) ?: onSpeak() }
+                                        .testTag("kanji_char_tts_${kanjiChar}")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = kanjiChar.toString(),
+                                            fontFamily = JapaneseFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = "Pronounce Kanji $kanjiChar",
+                                            modifier = Modifier.size(13.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Accent Underline Bar
                     Box(

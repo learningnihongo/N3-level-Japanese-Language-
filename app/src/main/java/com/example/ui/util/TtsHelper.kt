@@ -180,6 +180,19 @@ class TtsHelper(context: Context) {
     }
 
     /**
+     * Speaks a single Kanji character or compound with optional reading fallback.
+     * When reading is provided, it pronounces the phonetic Kana to avoid ambiguous readings.
+     */
+    fun speakKanji(kanji: String, reading: String? = null, rate: Float? = null) {
+        val textToSpeak = if (!reading.isNullOrBlank()) {
+            cleanJapaneseText(reading)
+        } else {
+            cleanJapaneseText(kanji)
+        }
+        speak(textToSpeak, rate)
+    }
+
+    /**
      * Speaks an example sentence smoothly, stripping cloze placeholders and ruby formatting.
      */
     fun speakSentence(sentence: String, rate: Float? = null) {
