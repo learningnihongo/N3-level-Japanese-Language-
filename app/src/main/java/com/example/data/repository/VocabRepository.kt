@@ -8,6 +8,8 @@ import com.example.data.model.LessonProgress
 import com.example.data.model.QuizHistory
 import com.example.data.model.SrsReviewLog
 import com.example.data.model.SrsScheduleSummary
+import com.example.data.model.QuizStreakInfo
+import com.example.data.model.StreakCalendarDay
 import com.example.data.model.UserProfile
 import com.example.data.model.VocabCard
 import com.example.data.srs.ReviewRating
@@ -408,8 +410,175 @@ class VocabRepository(
     }
 
     // Quiz History
+    fun getAllQuizHistories(): Flow<List<QuizHistory>> = quizDao.getAllQuizHistories()
+
     fun getRecentQuizHistory(limit: Int = 20): Flow<List<QuizHistory>> =
         quizDao.getRecentQuizHistory(limit)
+
+    /**
+     * Real-time reactive flow tracking consecutive days a user has completed quizzes.
+     * Incorporates a grace period until midnight the next day if a quiz was completed yesterday.
+     */
+    fun getQuizStreakFlow(): Flow<QuizStreakInfo> = combine(
+        quizDao.getAllQuizHistories(),
+        userProfileDao.getProfile()
+    ) { histories, profile ->
+        val storedBest = profile?.bestStreak ?: 0
+        calculateQuizStreak(histories, storedBest)
+    }
+
+    fun calculateQuizStreak(histories: List<QuizHistory>, storedBestStreak: Int): QuizStreakInfo {
+        if (histories.isEmpty()) {
+            val emptyRecentDays = generateRecentCalendarDays(emptyMap())
+            return QuizStreakInfo(
+                currentStreak = 0,
+                bestStreak = storedBestStreak,
+                isQuizCompletedToday = false,
+                isGracePeriodActive = false,
+                lastQuizTimestamp = 0L,
+                nextMilestone = 1,
+                daysUntilNextMilestone = 1,
+                streakStatusMessage = "Complete your first quiz today to start a streak!",
+                recentDays = emptyRecentDays
+            )
+        }
+
+        val sorted = histories.sortedByDescending { it.timestamp }
+        val lastQuizTime = sorted.first().timestamp
+
+        // Group quizzes by calendar date (Year, DayOfYear)
+        val quizzesByDay = mutableMapOf<Pair<Int, Int>, Int>()
+        for (h in histories) {
+            val cal = Calendar.getInstance().apply { timeInMillis = h.timestamp }
+            val key = Pair(cal.get(Calendar.YEAR), cal.get(Calendar.DAY_OF_YEAR))
+            quizzesByDay[key] = (quizzesByDay[key] ?: 0) + 1
+        }
+
+        val nowCal = Calendar.getInstance()
+        val todayKey = Pair(nowCal.get(Calendar.YEAR), nowCal.get(Calendar.DAY_OF_YEAR))
+
+        val yestCal = (nowCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val yesterdayKey = Pair(yestCal.get(Calendar.YEAR), yestCal.get(Calendar.DAY_OF_YEAR))
+
+        val isCompletedToday = quizzesByDay.containsKey(todayKey)
+        val isCompletedYesterday = quizzesByDay.containsKey(yesterdayKey)
+
+        var currentStreak = 0
+        var isGracePeriod = false
+
+        if (isCompletedToday) {
+            // Count consecutive days backwards starting from today
+            val checkCal = nowCal.clone() as Calendar
+            while (true) {
+                val key = Pair(checkCal.get(Calendar.YEAR), checkCal.get(Calendar.DAY_OF_YEAR))
+                if (quizzesByDay.containsKey(key)) {
+                    currentStreak++
+                    checkCal.add(Calendar.DAY_OF_YEAR, -1)
+                } else {
+                    break
+                }
+            }
+        } else if (isCompletedYesterday) {
+            // Grace period: completed yesterday, user has until midnight today
+            isGracePeriod = true
+            val checkCal = yestCal.clone() as Calendar
+            while (true) {
+                val key = Pair(checkCal.get(Calendar.YEAR), checkCal.get(Calendar.DAY_OF_YEAR))
+                if (quizzesByDay.containsKey(key)) {
+                    currentStreak++
+                    checkCal.add(Calendar.DAY_OF_YEAR, -1)
+                } else {
+                    break
+                }
+            }
+        } else {
+            // Missed both yesterday and today
+            currentStreak = 0
+        }
+
+        // Calculate all-time maximum consecutive run across all recorded quiz days
+        val uniqueDaysEpoch = sorted.map { h ->
+            val c = Calendar.getInstance().apply {
+                timeInMillis = h.timestamp
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            c.timeInMillis / (24 * 60 * 60 * 1000L)
+        }.distinct().sorted()
+
+        var maxHistoricStreak = 0
+        var currentRun = 0
+        var prevEpochDay: Long? = null
+        for (epochDay in uniqueDaysEpoch) {
+            if (prevEpochDay != null && epochDay == prevEpochDay + 1) {
+                currentRun++
+            } else {
+                currentRun = 1
+            }
+            if (currentRun > maxHistoricStreak) {
+                maxHistoricStreak = currentRun
+            }
+            prevEpochDay = epochDay
+        }
+
+        val bestStreak = maxOf(storedBestStreak, maxHistoricStreak, currentStreak)
+
+        val nextMilestone = when {
+            currentStreak < 1 -> 1
+            currentStreak < 3 -> 3
+            currentStreak < 7 -> 7
+            currentStreak < 14 -> 14
+            currentStreak < 30 -> 30
+            currentStreak < 60 -> 60
+            currentStreak < 100 -> 100
+            else -> currentStreak + 30
+        }
+
+        val statusMsg = when {
+            isCompletedToday -> "Streak Active! Quiz completed today 🔥"
+            isGracePeriod -> "Grace Period! Complete a quiz before midnight to keep your ${currentStreak}-day streak ⏳"
+            currentStreak == 0 && histories.isNotEmpty() -> "Streak reset. Complete a quiz today to start fresh! 🎯"
+            else -> "Complete a quiz today to start your streak!"
+        }
+
+        val recentDays = generateRecentCalendarDays(quizzesByDay)
+
+        return QuizStreakInfo(
+            currentStreak = currentStreak,
+            bestStreak = bestStreak,
+            isQuizCompletedToday = isCompletedToday,
+            isGracePeriodActive = isGracePeriod,
+            lastQuizTimestamp = lastQuizTime,
+            nextMilestone = nextMilestone,
+            daysUntilNextMilestone = (nextMilestone - currentStreak).coerceAtLeast(0),
+            streakStatusMessage = statusMsg,
+            recentDays = recentDays
+        )
+    }
+
+    private fun generateRecentCalendarDays(quizzesByDay: Map<Pair<Int, Int>, Int>): List<StreakCalendarDay> {
+        val dayFormat = java.text.SimpleDateFormat("EEE", java.util.Locale.ENGLISH)
+        val dateFormat = java.text.SimpleDateFormat("MMM d", java.util.Locale.ENGLISH)
+        val list = mutableListOf<StreakCalendarDay>()
+        for (i in 6 downTo 0) {
+            val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -i) }
+            val key = Pair(cal.get(Calendar.YEAR), cal.get(Calendar.DAY_OF_YEAR))
+            val count = quizzesByDay[key] ?: 0
+            list.add(
+                StreakCalendarDay(
+                    dayName = if (i == 0) "Today" else dayFormat.format(cal.time),
+                    dayOfMonth = cal.get(Calendar.DAY_OF_MONTH),
+                    dateLabel = dateFormat.format(cal.time),
+                    isCompleted = count > 0,
+                    isToday = i == 0,
+                    quizCount = count
+                )
+            )
+        }
+        return list
+    }
 
     suspend fun recordQuizResult(
         quizType: String,
@@ -430,6 +599,17 @@ class VocabRepository(
         quizDao.insertQuizHistory(history)
 
         addXp(xpGain)
-        checkAndUpdateStreak()
+
+        // Sync streak values to user profile
+        val allHistories = quizDao.getAllQuizHistories().firstOrNull() ?: listOf(history)
+        val currentProfile = userProfileDao.getProfile().firstOrNull() ?: UserProfile(id = 1)
+        val streakInfo = calculateQuizStreak(allHistories, currentProfile.bestStreak)
+        userProfileDao.updateProfile(
+            currentProfile.copy(
+                currentStreak = streakInfo.currentStreak,
+                bestStreak = streakInfo.bestStreak,
+                lastStudyDate = System.currentTimeMillis()
+            )
+        )
     }
 }

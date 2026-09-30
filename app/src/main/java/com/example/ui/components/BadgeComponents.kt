@@ -212,6 +212,39 @@ fun TrophyShowcaseCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (selectedCategory == BadgeCategory.STREAK) {
+                    val streakBadges = filteredBadges.filter { it.category == BadgeCategory.STREAK }
+                    val currentStreakVal = streakBadges.firstOrNull()?.currentValue ?: 0
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = StreakOrange.copy(alpha = 0.09f),
+                        border = BorderStroke(1.dp, StreakOrange.copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(text = "🔥", fontSize = 24.sp)
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Current Streak: $currentStreakVal Days",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Consecutive daily quizzes unlock these badges. Missed days have a grace period until midnight!",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
                 filteredBadges.forEach { badge ->
                     BadgeItemRow(
                         badge = badge,

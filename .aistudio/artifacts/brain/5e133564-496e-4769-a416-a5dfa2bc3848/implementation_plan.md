@@ -1,50 +1,59 @@
-# Streamlined Zen Profile Screen Redesign Plan
+# Implementation Plan: Daily Quiz Streak Tracking System & Profile Streak Badges
 
-## Overview
-Based on user feedback ("ရူပ်တဲ့ UI ကို မကြိုက်ဘူး" / dislikes cluttered UI), this plan streamlines the **Profile Screen** into an uncluttered, modern Japanese Zen-inspired single-surface experience. Instead of fragmented cards, duplicate counter tiles, and heavy nested boxes, the screen is consolidated into:
-1. **Zen Single-Card Profile Header**: Clean avatar, learner name, target JLPT badge, and an integrated subtle XP level progress pill.
-2. **Consolidated Essential Stats Row**: Combines duplicate counters into 3 core metrics (Streak 🔥, Mastered ⭐, Total Words 📚) in a single horizontal strip.
-3. **Organized, Minimalist Settings Groups**: Grouped lists with standard M3 list items, subtle dividers, and clean toggle rows for Reminders, Voice Audio, and Theme display.
-4. **Clean Dialogs & Popups**: Simple bottom sheets / dialogs for avatar customization and level details that keep the primary screen calm and distraction-free.
+Implement a robust daily quiz streak tracking system that calculates consecutive days of completed quizzes directly from the Room database history, incorporates a grace period until midnight the next day before resetting, and displays a prominent quiz streak badge in the Profile header and the trophy showcase.
+
+## User Preferences & Requirements
+1. **Placement**: Prominent streak badge in the Profile header and dedicated streak badges in the badge showcase.
+2. **Streak Calculation**: Real-time consecutive days calculated from `quiz_histories` in the Room SQLite database.
+3. **Grace Period**: Streak remains active with a grace period until midnight of the current day if a quiz was completed yesterday (giving the user until 11:59 PM today to complete today's quiz before dropping to 0).
 
 ---
 
-## Proposed Changes & User Experience
+## Architecture & Proposed Changes
 
-### 1. Unified Single Profile Card
-- **Before:** Separate Profile Header Card, separate bulky XP Level Card with complex multiple progress bars and text labels, plus a separate 4-tile learning overview.
-- **After:** 
-  - A clean, unified card with generous padding (Japanese Zen aesthetic).
-  - Avatar with subtle ring border and quick edit indicator.
-  - User name, JLPT level badge (`N3`), and rank title.
-  - A slim, elegant inline progress bar with a clean counter: `Lv. X • XXX / 150 XP` without visual clutter.
+### 1. Data Layer: Real-Time Consecutive Quiz Streak Calculator
+- **File**: `app/src/main/java/com/example/data/repository/VocabRepository.kt` & `QuizDao.kt`
+- Add a reactive flow in `VocabRepository` (and `QuizDao`) observing `getAllQuizHistories()`.
+- Implement `calculateQuizStreak(histories: List<QuizHistory>): QuizStreakInfo`:
+  - Group quiz timestamps by normalized calendar date (`YYYY-MM-DD` using the local calendar/timezone).
+  - Determine if a quiz was taken **today** (`Day 0`) and **yesterday** (`Day -1`).
+  - **Streak Rules**:
+    - If today has a quiz: count consecutive days backwards starting from today (today, yesterday, 2 days ago...).
+    - If today has NO quiz but yesterday has a quiz: **Grace Period active**. The consecutive streak through yesterday is retained! Display status indicating quiz needed today before midnight to maintain the streak.
+    - If neither today nor yesterday has a quiz: streak resets to 0.
+  - Calculate `currentStreak`, `bestStreak`, `isQuizDoneToday`, `daysUntilNextMilestone`, and next badge goal (1, 3, 7, 14, 30, 60 days).
+  - Also sync `bestStreak` and `currentStreak` into `UserProfile` when updated.
 
-### 2. Consolidated Essential Stats Strip
-- Consolidates redundant cards into 3 key metrics in a neat, lightweight row:
-  - **Streak**: Current day streak with flame icon.
-  - **Mastered**: Learned vocabulary count.
-  - **Library**: Total available JLPT N3 vocabulary.
-- Eliminates visual noise and repetitive card borders.
+### 2. ViewModel Layer: Expose Quiz Streak & Streak Badges
+- **File**: `app/src/main/java/com/example/ui/viewmodel/VocabViewModel.kt`
+- Expose `quizStreakInfo: StateFlow<QuizStreakInfo>` derived reactively from quiz history.
+- Update `allBadges: StateFlow<List<Badge>>` so the `STREAK` category badges (e.g., *Spark of Kanji (1d)*, *7-Day Streak Warrior (7d)*, *Fortnight Samurai (14d)*, *Monthly Master (30d)*, *Centurion Streak (100d)*) use the real-time quiz streak value calculated from `QuizHistory`.
+- Provide helper methods or status details (e.g., streak fire multiplier, motivational Japanese proverbs, grace period countdown).
 
-### 3. Clean Grouped Settings List
-- Rather than overwhelming multi-tab cards with heavy nested containers:
-  - Clean grouped categories:
-    - **Study Preferences:** Daily Goal & Notification Reminder.
-    - **Audio & Pronunciation:** Speech rate, pitch, and voice sample.
-    - **Appearance:** Theme toggle (Light / Dark / System).
-    - **Achievements & Badges:** Compact badge showcase with a tap-to-expand sheet.
-  - Uses standard Material 3 `ListItem` styling with subtle leading icons and crisp trailing controls (Switches, Chevron arrows).
-
-### 4. Code & Architecture Maintenance
-- Updates `ProfileScreen.kt` in `app/src/main/java/com/example/ui/screens/ProfileScreen.kt`.
-- Keeps full compatibility with `VocabViewModel` (all state flows, notification updates, audio settings, and custom avatar URIs remain fully functional).
-- Ensures accessibility standards (minimum 48dp touch targets, semantic descriptions).
+### 3. UI Layer: Prominent Header Badge & Showcase in Profile Screen
+- **File**: `app/src/main/java/com/example/ui/screens/ProfileScreen.kt`
+  - **Profile Header Card**:
+    - Add a prominent, glowing **Quiz Streak Badge** right in the profile header (next to the user's name/level info).
+    - Features:
+      - Animated flame icon 🔥 with pulsating glow when streak is active.
+      - Dynamic streak counter with tier colors (Bronze, Silver, Gold, Flame Orange).
+      - Status pill: "⚡ Streak Active · Done Today" or "⏳ Grace Period · Complete a quiz today".
+      - Tap interaction to view streak details dialog with streak history calendar, days to next badge, and motivational quote.
+  - **Stat Ribbon**:
+    - Keep the 4-metric ribbon updated with the verified real-time quiz streak.
+  - **Trophy Showcase (Badges & Progress segment)**:
+    - Showcase all unlocked and in-progress quiz streak badges with real-time percentage progress bars, XP rewards, and achievement dates.
+    - Highlight the user's next milestone badge.
 
 ---
 
 ## Verification Plan
-1. **Compilation Check:** Run `compile_applet` to verify clean build without syntax or dependency errors.
-2. **UI Test & Visual Polish:** Verify layout in Android preview:
-   - Check light and dark theme contrast.
-   - Verify that all settings toggles (Voice, Reminders, Theme, Avatar picker) continue to work seamlessly.
-   - Confirm touch targets meet 48dp minimum.
+1. **Compilation Check**: Run `compile_applet` to ensure full build success without errors.
+2. **Streak Logic Verification**:
+   - Verify calculation when no quizzes exist (streak = 0).
+   - Verify calculation when quiz was completed today (streak = 1+).
+   - Verify calculation when quiz was completed yesterday and not yet today (streak preserved in grace period).
+   - Verify streak reset when last quiz was 2+ days ago.
+3. **UI Verification**:
+   - Check Profile screen header displays the prominent streak badge cleanly.
+   - Check Trophy Showcase segment correctly shows streak badges updating with the real-time streak.

@@ -1102,6 +1102,8 @@ private fun FlashcardBackView(
     onSpeakReading: () -> Unit,
     onSpeakSlow: (() -> Unit)? = null,
     onSpeakSentence: () -> Unit,
+    onSpeakKanji: ((String) -> Unit)? = null,
+    isSpeaking: Boolean = false,
     onBookmark: () -> Unit,
     onFlip: () -> Unit,
     onOpenCompoundLookup: () -> Unit,

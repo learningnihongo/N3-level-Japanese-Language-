@@ -81,6 +81,8 @@ import com.example.data.model.Badge
 import com.example.ui.components.AppThemeSettingsCard
 import com.example.ui.components.BadgeDetailDialog
 import com.example.ui.components.DailyReminderSettingsCard
+import com.example.ui.components.QuizStreakDetailsDialog
+import com.example.ui.components.QuizStreakHeaderBadge
 import com.example.ui.components.TrophyShowcaseCard
 import com.example.ui.components.VoiceSettingsCard
 import com.example.ui.components.WeeklyMasteryProgressChartCard
@@ -116,8 +118,10 @@ fun ProfileScreen(
     val voiceSettings by vocabViewModel.voiceSettings.collectAsState()
     val isSpeaking by vocabViewModel.isSpeaking.collectAsState()
     val weeklyProgressSummary by vocabViewModel.weeklyMasteryVsReviewedStats.collectAsState()
+    val quizStreak by vocabViewModel.quizStreakInfo.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    var showStreakDetailsDialog by remember { mutableStateOf(false) }
     var selectedBadgeForDetail by remember { mutableStateOf<Badge?>(null) }
     var selectedSegmentIndex by remember { mutableIntStateOf(0) }
 
@@ -340,6 +344,14 @@ fun ProfileScreen(
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                    // Prominent Quiz Streak Badge in Header
+                    QuizStreakHeaderBadge(
+                        streakInfo = quizStreak,
+                        onClick = { showStreakDetailsDialog = true }
+                    )
                 }
             }
         }
@@ -364,9 +376,9 @@ fun ProfileScreen(
                 ) {
                     MetricRibbonItem(
                         icon = Icons.Default.LocalFireDepartment,
-                        iconTint = StreakOrange,
-                        value = "${profile?.currentStreak ?: 0}d",
-                        label = "Streak",
+                        iconTint = if (quizStreak.currentStreak > 0) StreakOrange else MaterialTheme.colorScheme.onSurfaceVariant,
+                        value = "${quizStreak.currentStreak}d",
+                        label = "Quiz Streak",
                         modifier = Modifier.weight(1f)
                     )
 
@@ -602,6 +614,14 @@ fun ProfileScreen(
         BadgeDetailDialog(
             badge = badge,
             onDismiss = { selectedBadgeForDetail = null }
+        )
+    }
+
+    // Quiz streak details dialog
+    if (showStreakDetailsDialog) {
+        QuizStreakDetailsDialog(
+            streakInfo = quizStreak,
+            onDismiss = { showStreakDetailsDialog = false }
         )
     }
 

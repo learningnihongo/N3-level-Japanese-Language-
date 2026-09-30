@@ -8,8 +8,11 @@ import com.example.data.model.Badge
 import com.example.data.model.BadgeCategory
 import com.example.data.model.BadgeTier
 import com.example.data.model.LessonProgress
+import com.example.data.model.QuizHistory
+import com.example.data.model.QuizStreakInfo
 import com.example.data.model.SrsReviewLog
 import com.example.data.model.SrsScheduleSummary
+import com.example.data.model.StreakCalendarDay
 import com.example.data.model.UserProfile
 import com.example.data.model.VocabCard
 import com.example.data.repository.VocabRepository
@@ -939,15 +942,21 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         )
     )
 
+    // 2d. Real-Time Daily Quiz Streak Tracking Flow
+    val quizStreakInfo: StateFlow<QuizStreakInfo> = repository.getQuizStreakFlow().stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        QuizStreakInfo()
+    )
+
     // 6. Badges & Digital Trophies Gamification System
     val allBadges: StateFlow<List<Badge>> = combine(
         userProfile,
         repository.getAllCards(),
-        repository.getRecentQuizHistory(100)
-    ) { profile, cards, quizzes ->
-        val streak = profile?.currentStreak ?: 1
-        val bestStreak = profile?.bestStreak ?: streak
-        val activeStreak = maxOf(streak, bestStreak)
+        repository.getRecentQuizHistory(100),
+        repository.getQuizStreakFlow()
+    ) { profile, cards, quizzes, quizStreak ->
+        val activeStreak = maxOf(quizStreak.currentStreak, quizStreak.bestStreak)
         val level = profile?.level ?: 1
 
         val masteredCards = cards.count { it.masteryLevel >= 3 }
@@ -959,43 +968,56 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         val speedArenaQuizzes = quizzes.count { it.quizType.contains("Speed", ignoreCase = true) }
 
         listOf(
-            // --- STREAK BADGES ---
+            // --- DAILY QUIZ STREAK BADGES ---
             Badge(
                 id = "streak_1",
                 title = "Spark of Kanji",
                 japaneseTitle = "初めの一歩",
-                description = "Begin your Japanese learning journey with a 1-day study streak.",
+                description = "Complete a quiz on 1 day to begin your daily quiz streak.",
                 category = BadgeCategory.STREAK,
                 tier = BadgeTier.BRONZE,
                 targetValue = 1,
                 currentValue = activeStreak,
                 xpReward = 50,
-                iconEmoji = "🔥",
+                iconEmoji = "✨",
                 quote = "千里の行も足下に始まる (A journey of a thousand miles begins with a single step)"
+            ),
+            Badge(
+                id = "streak_3",
+                title = "3-Day Ember",
+                japaneseTitle = "三日の火花",
+                description = "Maintain a 3-day consecutive quiz streak.",
+                category = BadgeCategory.STREAK,
+                tier = BadgeTier.BRONZE,
+                targetValue = 3,
+                currentValue = activeStreak,
+                xpReward = 100,
+                iconEmoji = "🔥",
+                quote = "継続は力なり (Continuity is strength)"
             ),
             Badge(
                 id = "streak_7",
                 title = "7-Day Streak Warrior",
                 japaneseTitle = "一週間の猛者",
-                description = "Maintain a consistent 7-day daily study streak.",
+                description = "Maintain a consistent 7-day daily quiz streak.",
                 category = BadgeCategory.STREAK,
                 tier = BadgeTier.SILVER,
                 targetValue = 7,
                 currentValue = activeStreak,
-                xpReward = 150,
+                xpReward = 200,
                 iconEmoji = "⚡",
-                quote = "継続は力なり (Continuity is strength)"
+                quote = "日進月歩 (Steady and rapid daily progress)"
             ),
             Badge(
                 id = "streak_14",
                 title = "Fortnight Samurai",
                 japaneseTitle = "二週間の侍",
-                description = "Keep studying daily for 14 consecutive days.",
+                description = "Complete quizzes daily for 14 consecutive days.",
                 category = BadgeCategory.STREAK,
                 tier = BadgeTier.GOLD,
                 targetValue = 14,
                 currentValue = activeStreak,
-                xpReward = 300,
+                xpReward = 400,
                 iconEmoji = "⚔️",
                 quote = "石の上にも三年 (Perseverance prevails)"
             ),
@@ -1003,14 +1025,40 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
                 id = "streak_30",
                 title = "Monthly Master",
                 japaneseTitle = "月の達人",
-                description = "Achieve a legendary 30-day streak of daily SRS reviews.",
+                description = "Achieve a legendary 30-day streak of daily quizzes.",
                 category = BadgeCategory.STREAK,
                 tier = BadgeTier.PLATINUM,
                 targetValue = 30,
                 currentValue = activeStreak,
-                xpReward = 600,
+                xpReward = 800,
                 iconEmoji = "👑",
                 quote = "雨垂れ石を穿つ (Constant dropping wears away a stone)"
+            ),
+            Badge(
+                id = "streak_60",
+                title = "Sixty Suns of Kanji",
+                japaneseTitle = "六十日の光彩",
+                description = "Sustain a 60-day unbroken chain of daily quizzes.",
+                category = BadgeCategory.STREAK,
+                tier = BadgeTier.DIAMOND,
+                targetValue = 60,
+                currentValue = activeStreak,
+                xpReward = 1500,
+                iconEmoji = "🌟",
+                quote = "一意専心 (Devoting oneself entirely with single-minded focus)"
+            ),
+            Badge(
+                id = "streak_100",
+                title = "Centurion Scholar",
+                japaneseTitle = "百日の賢者",
+                description = "Conquer an epic 100-day consecutive quiz streak!",
+                category = BadgeCategory.STREAK,
+                tier = BadgeTier.DIAMOND,
+                targetValue = 100,
+                currentValue = activeStreak,
+                xpReward = 3000,
+                iconEmoji = "⛩️",
+                quote = "不撓不屈 (Tenacious and unyielding spirit)"
             ),
 
             // --- MASTERY BADGES ---
