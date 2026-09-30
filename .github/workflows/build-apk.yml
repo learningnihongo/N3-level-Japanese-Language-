@@ -1,13 +1,27 @@
-name: Build Android APK
+name: Build Android APK & GitHub Release
 
 on:
   push:
     branches: [ "**" ]
+    tags:
+      - 'v*'
+      - '*'
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a GitHub Release with APK'
+        required: false
+        type: boolean
+        default: true
+      release_tag:
+        description: 'Release Tag Name (e.g. v1.0.0)'
+        required: false
+        type: string
+        default: 'v1.0.0'
 
 jobs:
   build:
-    name: Build JLPT N3 Burmese Vocab APK
+    name: Build & Release JLPT N3 APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,7 +55,7 @@ jobs:
             cp .env.example .env
           fi
 
-      - name: Build Debug APK
+      - name: Build APK
         run: gradle assembleDebug --no-daemon
 
       - name: Prepare APK File
@@ -55,3 +69,40 @@ jobs:
           name: JLPT_N3_Burmese_Vocab_APK
           path: output_apk/JLPT_N3_Burmese_Vocab.apk
           retention-days: 30
+
+      - name: Create GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output_apk/JLPT_N3_Burmese_Vocab.apk
+          name: "Release ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei - Android Release
+            
+            **APK Download**: Download `JLPT_N3_Burmese_Vocab.apk` attached below and install it directly on your Android device.
+
+            #### Features:
+            - **Daily Quiz Streak Tracking**: Real-time streak tracking calculated from quiz history with a midnight grace period.
+            - **Profile Streak Badges**: Prominent flame badge in the profile header with 7-day activity calendar dialog.
+            - **Japanese Text-To-Speech (TTS)**: Pronounce Kanji, readings, vocabulary, collocations, and example sentences.
+            - **Spaced Repetition (SRS)**: SM-2 spaced repetition algorithm for long-term memory retention.
+            - **100% Offline Ready**: All 375+ JLPT N3 words, collocations, and Burmese translations stored locally in Room SQLite.
+
+      - name: Create GitHub Release on Workflow Dispatch
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output_apk/JLPT_N3_Burmese_Vocab.apk
+          tag_name: ${{ inputs.release_tag }}
+          name: "Release ${{ inputs.release_tag }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei - Android Release (${{ inputs.release_tag }})
+            
+            **APK Download**: Download `JLPT_N3_Burmese_Vocab.apk` attached below and install it directly on your Android device.
