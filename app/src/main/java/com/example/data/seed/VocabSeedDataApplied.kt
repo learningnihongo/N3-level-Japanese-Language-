@@ -42,7 +42,11 @@ object VocabSeedDataApplied {
                VocabSeedDataMastery1.getCards() +
                VocabSeedDataMastery2.getCards() +
                VocabSeedDataMastery3.getCards() +
-               VocabSeedDataMastery4.getCards()
+               VocabSeedDataMastery4.getCards() +
+               VocabSeedDataPastExams1.getCards() +
+               VocabSeedDataPastExams2.getCards() +
+               VocabSeedDataPastExams3.getCards() +
+               VocabSeedDataPastExams4.getCards()
     }
 }
 

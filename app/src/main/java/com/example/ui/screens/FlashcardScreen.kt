@@ -169,6 +169,7 @@ val SAMPLE_N3_FLASHCARDS = listOf(
 
 private enum class FlashcardDeckFilter(val label: String, val burmeseLabel: String) {
     ALL("All Cards", "ဝေါဟာရ အားလုံး"),
+    PAST_EXAMS("Past Exams", "📝 မေးခွန်းဟောင်း"),
     COLLOCATIONS("Collocations", "⚡ တွဲလုံးများ"),
     BOOKMARKED("Bookmarked", "⭐ မှတ်ထားသော")
 }
@@ -207,6 +208,7 @@ fun FlashcardScreen(
     var deck by remember(baseDeck, selectedFilter) {
         val list = when (selectedFilter) {
             FlashcardDeckFilter.ALL -> baseDeck
+            FlashcardDeckFilter.PAST_EXAMS -> baseDeck.filter { com.example.data.model.PastExamData.isPastExamCard(it) }.ifEmpty { baseDeck }
             FlashcardDeckFilter.COLLOCATIONS -> CollocationData.getAllCollocationCards()
             FlashcardDeckFilter.BOOKMARKED -> baseDeck.filter { it.isBookmarked }.ifEmpty { baseDeck }
         }
@@ -307,7 +309,11 @@ fun FlashcardScreen(
                             }
                         }
                         Text(
-                            text = if (selectedFilter == FlashcardDeckFilter.COLLOCATIONS) "တွဲလုံးများ လေ့ကျင့်ခန်း • Collocations & Compounds" else "JLPT N3 Kanji • Flip 3D to reveal",
+                            text = when (selectedFilter) {
+                                FlashcardDeckFilter.COLLOCATIONS -> "တွဲလုံးများ လေ့ကျင့်ခန်း • Collocations & Compounds"
+                                FlashcardDeckFilter.PAST_EXAMS -> "JLPT N3 မေးခွန်းဟောင်း (2014 - 2025) • Past Exam Papers"
+                                else -> "JLPT N3 Kanji • Flip 3D to reveal"
+                            },
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -12,6 +12,8 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Quiz
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(
@@ -30,5 +32,6 @@ sealed class Screen(
     data object Flashcard : Screen("flashcard", "Flashcard", Icons.Filled.AutoAwesome, Icons.Filled.AutoAwesome)
     data object KanjiProgress : Screen("kanji_progress", "Kanji Progress", Icons.Filled.BarChart, Icons.Outlined.BarChart)
     data object QuizHistory : Screen("quiz_history", "Quiz History", Icons.Filled.Quiz, Icons.Outlined.Quiz)
+    data object PastExams : Screen("past_exams", "Past Exams", Icons.Filled.School, Icons.Outlined.School)
 }
 

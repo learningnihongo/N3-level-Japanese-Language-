@@ -123,6 +123,11 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
                     val weak = repository.getRandomWeakCardsForQuiz(questionCount + 10)
                     if (weak.size >= 4) weak else repository.getRandomCardsForQuiz(questionCount + 15)
                 }
+                lessonFilter == -3 -> {
+                    val all = repository.getAllCardsDirect()
+                    val pastExams = all.filter { com.example.data.model.PastExamData.isPastExamCard(it) }.shuffled()
+                    if (pastExams.isNotEmpty()) pastExams else repository.getRandomCardsForQuiz(questionCount + 15)
+                }
                 lessonFilter != null && lessonFilter > 0 -> {
                     repository.getRandomCardsForLessonQuiz(lessonFilter, questionCount + 15)
                 }
@@ -367,6 +372,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             quizType == QuizType.BOOKMARKED_DRILL || lessonFilter == -2 -> "Starred Vocab Drill"
             quizType == QuizType.HOMOPHONE_SIMILAR_DRILL -> "ဆင်တူရိုးမှား (Homophones)"
             lessonFilter == -1 -> "Weak Cards Arena"
+            lessonFilter == -3 -> "မေးခွန်းဟောင်း (Past Exams)"
             lessonFilter != null && lessonFilter > 0 -> "Lesson $lessonFilter"
             else -> "General JLPT N3"
         }

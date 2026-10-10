@@ -47,7 +47,8 @@ enum class VocabFilterType {
     BOOKMARKED,
     CUSTOM_CARDS,
     WEAK_CARDS,
-    MASTERED
+    MASTERED,
+    PAST_EXAMS
 }
 
 enum class SearchFilterTarget(val label: String, val burmeseLabel: String, val subtitle: String) {
@@ -1267,6 +1268,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
                 VocabFilterType.CUSTOM_CARDS -> repository.getCustomPersonalCards()
                 VocabFilterType.WEAK_CARDS -> repository.getWeakCards()
                 VocabFilterType.MASTERED -> repository.getMasteredCards()
+                VocabFilterType.PAST_EXAMS -> repository.getAllCards().map { list -> list.filter { com.example.data.model.PastExamData.isPastExamCard(it) } }
             }
         }
 
@@ -1752,6 +1754,12 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
                 stopAutoPlay()
                 _isSessionFinished.value = true
             }
+        }
+    }
+
+    fun rateFlashcardRecall(card: VocabCard, rating: ReviewRating) {
+        viewModelScope.launch {
+            repository.processCardReview(card, rating)
         }
     }
 

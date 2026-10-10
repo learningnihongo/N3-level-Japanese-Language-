@@ -174,6 +174,7 @@ fun HomeScreen(
     onNavigateToFlashcard: () -> Unit = {},
     onNavigateToKanjiProgress: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
+    onNavigateToPastExams: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val profile by vocabViewModel.userProfile.collectAsState()
@@ -546,6 +547,101 @@ fun HomeScreen(
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.primary
                         )
+                    }
+                }
+
+                // Featured JLPT N3 Past Exams Card (မေးခွန်းဟောင်း 2014-2025)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable { onNavigateToPastExams() }
+                        .testTag("home_past_exams_banner"),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.5.dp, JapaneseCrimson.copy(alpha = 0.35f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        JapaneseCrimson.copy(alpha = 0.12f),
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.08f)
+                                    )
+                                )
+                            )
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = JapaneseCrimson,
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "問",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontFamily = JapaneseFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 20.sp
+                                            ),
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "မေးခွန်းဟောင်း (Past Exams)",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = JapaneseCrimson.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = "2014-2025",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                                                fontWeight = FontWeight.Bold,
+                                                color = JapaneseCrimson,
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "၁,၃၅၇ စကားလုံး • 漢字 • 語彙 • 3D ကတ်ပြား",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Open Past Exams",
+                                tint = JapaneseCrimson,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
 

@@ -66,6 +66,7 @@ import com.example.ui.screens.FlashcardScreen
 import com.example.ui.screens.FlashcardStudyScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.KanjiProgressScreen
+import com.example.ui.screens.PastExamSectionScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.QuizHistoryScreen
 import com.example.ui.screens.QuizScreen
@@ -130,6 +131,7 @@ fun MainApp(
                         Screen.Dashboard.route -> Triple("図", "Progress Dashboard ダッシュボード", "D3 / Recharts Progress & Streak Metrics")
                         Screen.Quiz.route -> Triple("試", "Quiz Arena 試練場", "Timed Quizzes & Review Tests")
                         Screen.Profile.route -> Triple("友", "Student Profile プロフィール", "Study Goals, Audio & Theme Preferences")
+                        Screen.PastExams.route -> Triple("問", "Past Exams 過去問", "JLPT N3 Past Exam Papers (2014 - 2025)")
                         else -> Triple("学", "KotoKanji こと漢字", "JLPT N3 Myanmar • Flashcards")
                     }
 
@@ -344,6 +346,9 @@ fun MainApp(
                             },
                             onNavigateToDashboard = {
                                 navController.navigate(Screen.Dashboard.route)
+                            },
+                            onNavigateToPastExams = {
+                                navController.navigate(Screen.PastExams.route)
                             }
                         )
                     }
@@ -451,6 +456,24 @@ fun MainApp(
                             onNavigateToStudy = { cards ->
                                 vocabViewModel.startStudySession(cards)
                                 navController.navigate(Screen.Study.route)
+                            }
+                        )
+                    }
+
+                    composable(Screen.PastExams.route) {
+                        PastExamSectionScreen(
+                            vocabViewModel = vocabViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onStartPastExamQuiz = { cards ->
+                                quizViewModel.startQuiz(
+                                    quizType = com.example.ui.viewmodel.QuizType.KANJI_TO_MEANING,
+                                    lessonFilter = null,
+                                    questionCount = 10,
+                                    customCardsList = cards
+                                )
+                                navController.navigate(Screen.Quiz.route)
                             }
                         )
                     }

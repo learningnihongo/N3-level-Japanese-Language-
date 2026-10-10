@@ -316,6 +316,16 @@ fun VocabBrowseScreen(
                         label = { Text("Mastered") }
                     )
                 }
+                item {
+                    FilterChip(
+                        selected = currentFilter == VocabFilterType.PAST_EXAMS,
+                        onClick = {
+                            vocabViewModel.selectTag(null)
+                            vocabViewModel.setFilter(VocabFilterType.PAST_EXAMS)
+                        },
+                        label = { Text("မေးခွန်းဟောင်း (Past Exams)") }
+                    )
+                }
             }
 
             // Categories & Tag Filter Bar

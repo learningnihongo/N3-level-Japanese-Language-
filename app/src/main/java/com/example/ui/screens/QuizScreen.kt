@@ -466,6 +466,17 @@ private fun QuizLobbyView(
                             )
                         )
                     }
+                    item {
+                        FilterChip(
+                            selected = selectedLessonFilter == -3,
+                            onClick = { selectedLessonFilter = -3 },
+                            label = { Text("📝 မေးခွန်းဟောင်း (Past Exams)", fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = JapaneseCrimson,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
                     items(29) { idx ->
                         val lessonNum = idx + 1
                         FilterChip(

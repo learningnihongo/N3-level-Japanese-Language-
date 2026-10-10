@@ -86,11 +86,13 @@ jobs:
             **APK Download**: Download `JLPT_N3_Burmese_Vocab.apk` attached below and install it directly on your Android device.
 
             #### Features:
+            - **JLPT N3 Past Exam Questions (မေးခွန်းဟောင်း 2014-2025)**: 1,357 Vocabulary & Kanji questions accurately integrated across 20 exam sessions with exact Myanmar/Burmese translations.
+            - **Past Exam Sections**: Dedicated tabs for **Kotoba (語彙)**, **Kanji (漢字)**, and **3D Flashcards (ကတ်ပြား)** with session filters (2014/12 to 2025/12).
             - **Daily Quiz Streak Tracking**: Real-time streak tracking calculated from quiz history with a midnight grace period.
             - **Profile Streak Badges**: Prominent flame badge in the profile header with 7-day activity calendar dialog.
             - **Japanese Text-To-Speech (TTS)**: Pronounce Kanji, readings, vocabulary, collocations, and example sentences.
             - **Spaced Repetition (SRS)**: SM-2 spaced repetition algorithm for long-term memory retention.
-            - **100% Offline Ready**: All 375+ JLPT N3 words, collocations, and Burmese translations stored locally in Room SQLite.
+            - **100% Offline Ready**: All vocabulary, past exams, and Burmese translations stored locally in Room SQLite.
 
       - name: Create GitHub Release on Workflow Dispatch
         if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
