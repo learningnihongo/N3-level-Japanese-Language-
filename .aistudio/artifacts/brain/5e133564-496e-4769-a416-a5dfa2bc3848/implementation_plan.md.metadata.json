@@ -1,6 +1,0 @@
-{
-  "summary":  "Implementation plan for a real-time daily quiz streak tracking system based on quiz history from the Room database with a midnight grace period, prominent streak badge in the profile header, and streak badges in the showcase.",
-  "updatedAt":  "2026-09-30T16:33:15.437123600Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}
