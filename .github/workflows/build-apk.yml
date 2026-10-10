@@ -88,6 +88,7 @@ jobs:
             #### Features:
             - **JLPT N3 Past Exam Questions (မေးခွန်းဟောင်း 2014-2025)**: 1,357 Vocabulary & Kanji questions accurately integrated across 20 exam sessions with exact Myanmar/Burmese translations.
             - **Past Exam Sections**: Dedicated tabs for **Kotoba (語彙)**, **Kanji (漢字)**, and **3D Flashcards (ကတ်ပြား)** with session filters (2014/12 to 2025/12).
+            - **Customizable Flashcard Gesture Styles**: 4 interactive gesture modes for Past Exams — **Swipe SRS (ပွတ်ဆွဲ စစ်ဆေး)**, **Slide Carousel (ဘေးသို့ ပွတ်ဆွဲ)**, **Vertical Flip (အပေါ်/အောက် လှန်)**, and **Tap Only (နှိပ်ရုံသီးသန့်)** with 1-tap quick style switching and smooth 3D animations.
             - **Daily Quiz Streak Tracking**: Real-time streak tracking calculated from quiz history with a midnight grace period.
             - **Profile Streak Badges**: Prominent flame badge in the profile header with 7-day activity calendar dialog.
             - **Japanese Text-To-Speech (TTS)**: Pronounce Kanji, readings, vocabulary, collocations, and example sentences.
