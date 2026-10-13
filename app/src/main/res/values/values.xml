@@ -8,5 +8,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="white">#FFFFFFFF</color>
     <string name="app_name">KanjiKotoba</string>
+    <string name="default_web_client_id" translatable="false">605979734970-2tf1v8bo84o3ou4jaeifhupmc6ho2ng9.apps.googleusercontent.com</string>
     <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar"/>
 </resources>

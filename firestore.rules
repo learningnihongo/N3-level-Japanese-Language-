@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(docId) {
+      return docId is string && docId.size() > 0 && docId.size() <= 128 && docId.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 1000)) &&
+             (!('targetJlptLevel' in data) || (data.targetJlptLevel is string && data.targetJlptLevel.size() <= 10)) &&
+             (!('dailyGoal' in data) || data.dailyGoal is int) &&
+             data.totalXp is int && data.totalXp >= 0 &&
+             data.currentStreak is int && data.currentStreak >= 0 &&
+             (!('bestStreak' in data) || data.bestStreak is int) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCustomFlashcard(data) {
+      return data.id is string && data.id.size() > 0 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.front is string && data.front.size() > 0 && data.front.size() <= 500 &&
+             (!('reading' in data) || (data.reading is string && data.reading.size() <= 500)) &&
+             data.back is string && data.back.size() > 0 && data.back.size() <= 1000 &&
+             (!('cardType' in data) || (data.cardType is string && data.cardType.size() <= 50)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
+             (!('exampleSentence' in data) || (data.exampleSentence is string && data.exampleSentence.size() <= 1000)) &&
+             (!('exampleMeaning' in data) || (data.exampleMeaning is string && data.exampleMeaning.size() <= 1000)) &&
+             (!('masteryLevel' in data) || data.masteryLevel is int) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidQuizHistory(data) {
+      return data.id is string && data.id.size() > 0 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.quizType is string && data.quizType.size() <= 50 &&
+             data.score is int && data.score >= 0 &&
+             data.totalQuestions is int && data.totalQuestions > 0 &&
+             (!('accuracyPercentage' in data) || data.accuracyPercentage is int) &&
+             (!('xpEarned' in data) || data.xpEarned is int) &&
+             data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (!('updatedAt' in incoming()) || (incoming().updatedAt is timestamp && incoming().updatedAt <= request.time)) &&
+                       isValidUserProfile(incoming());
+
+      allow delete: if isOwner(userId);
+
+      match /custom_flashcards/{cardId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(cardId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidCustomFlashcard(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(cardId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidCustomFlashcard(incoming());
+
+        allow delete: if isOwner(userId) && isValidId(cardId);
+      }
+
+      match /quiz_histories/{quizId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(quizId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidQuizHistory(incoming());
+
+        allow delete: if isOwner(userId) && isValidId(quizId);
+      }
+    }
+  }
+}

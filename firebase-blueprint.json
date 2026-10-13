@@ -1,0 +1,186 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with study statistics, streak, and targets",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique Google user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Optional user avatar URL"
+        },
+        "targetJlptLevel": {
+          "type": "string",
+          "description": "Current target JLPT level, e.g., N3"
+        },
+        "dailyGoal": {
+          "type": "integer",
+          "description": "Target cards per day"
+        },
+        "totalXp": {
+          "type": "integer",
+          "description": "Accumulated experience points"
+        },
+        "currentStreak": {
+          "type": "integer",
+          "description": "Current consecutive study days streak"
+        },
+        "bestStreak": {
+          "type": "integer",
+          "description": "Best consecutive study days streak"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile update timestamp"
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "totalXp",
+        "currentStreak",
+        "createdAt"
+      ]
+    },
+    "CustomFlashcard": {
+      "title": "CustomFlashcard",
+      "description": "User created flashcard synced to cloud",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Flashcard document ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "front": {
+          "type": "string",
+          "description": "Japanese word or Kanji"
+        },
+        "reading": {
+          "type": "string",
+          "description": "Furigana / Hiragana reading"
+        },
+        "back": {
+          "type": "string",
+          "description": "Burmese or English meaning"
+        },
+        "cardType": {
+          "type": "string",
+          "description": "Card category (Kanji, Kotoba, Grammar)"
+        },
+        "exampleSentence": {
+          "type": "string",
+          "description": "Optional example sentence"
+        },
+        "exampleMeaning": {
+          "type": "string",
+          "description": "Optional meaning of the example sentence"
+        },
+        "masteryLevel": {
+          "type": "integer",
+          "description": "SRS mastery score from 0 to 5"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Card creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "front",
+        "back",
+        "createdAt"
+      ]
+    },
+    "QuizHistory": {
+      "title": "QuizHistory",
+      "description": "Completed quiz outcome and score record",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Quiz log document ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "quizType": {
+          "type": "string",
+          "description": "Type of quiz (Kanji, Kotoba, Mixed)"
+        },
+        "score": {
+          "type": "integer",
+          "description": "Correct answers score"
+        },
+        "totalQuestions": {
+          "type": "integer",
+          "description": "Total question count"
+        },
+        "accuracyPercentage": {
+          "type": "integer",
+          "description": "Calculated accuracy percentage"
+        },
+        "xpEarned": {
+          "type": "integer",
+          "description": "XP gained from the quiz"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Quiz completion timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "quizType",
+        "score",
+        "totalQuestions",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile with study statistics"
+    },
+    "/users/{userId}/custom_flashcards/{cardId}": {
+      "schema": "CustomFlashcard",
+      "description": "User's custom created flashcards"
+    },
+    "/users/{userId}/quiz_histories/{quizId}": {
+      "schema": "QuizHistory",
+      "description": "Logs of completed quizzes and performance"
+    }
+  }
+}
