@@ -6,7 +6,7 @@ import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.ServerTimestamp
 
 @IgnoreExtraProperties
-data class UserProfile(
+data class FirestoreUserProfile(
     @DocumentId val id: String = "",
     val userId: String = "",
     val email: String? = null,
@@ -38,7 +38,7 @@ data class CustomFlashcard(
 )
 
 @IgnoreExtraProperties
-data class QuizHistory(
+data class FirestoreQuizHistory(
     @DocumentId val id: String = "",
     val userId: String = "",
     val quizType: String = "Kanji",

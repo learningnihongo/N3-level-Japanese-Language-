@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.example.R
 import com.example.data.model.CustomFlashcard
-import com.example.data.model.QuizHistory
-import com.example.data.model.UserProfile
+import com.example.data.model.FirestoreQuizHistory
+import com.example.data.model.FirestoreUserProfile
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -111,10 +111,10 @@ class FirestoreSyncRepository(
         prefs.edit().putString(KEY_LOCAL_CARDS, jsonArray.toString()).apply()
     }
 
-    fun getLocalUserProfile(): UserProfile {
+    fun getLocalUserProfile(): FirestoreUserProfile {
         val xp = prefs.getLong(KEY_LOCAL_XP, 120L)
         val streak = prefs.getLong(KEY_LOCAL_STREAK, 1L)
-        return UserProfile(
+        return FirestoreUserProfile(
             userId = "local_user",
             displayName = "Learner",
             totalXp = xp,
@@ -122,7 +122,7 @@ class FirestoreSyncRepository(
         )
     }
 
-    fun saveLocalUserProfile(profile: UserProfile) {
+    fun saveLocalUserProfile(profile: FirestoreUserProfile) {
         prefs.edit()
             .putLong(KEY_LOCAL_XP, profile.totalXp)
             .putLong(KEY_LOCAL_STREAK, profile.currentStreak)
@@ -212,7 +212,7 @@ class FirestoreSyncRepository(
         return Result.success(Unit)
     }
 
-    fun observeUserProfile(userId: String?): Flow<UserProfile?> = callbackFlow {
+    fun observeUserProfile(userId: String?): Flow<FirestoreUserProfile?> = callbackFlow {
         val local = getLocalUserProfile()
         trySend(local)
 
@@ -228,7 +228,7 @@ class FirestoreSyncRepository(
                 return@addSnapshotListener
             }
             if (snapshot != null && snapshot.exists()) {
-                val profile = snapshot.toObject(UserProfile::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                val profile = snapshot.toObject(FirestoreUserProfile::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
                 if (profile != null) {
                     saveLocalUserProfile(profile)
                     trySend(profile)
@@ -240,7 +240,7 @@ class FirestoreSyncRepository(
         awaitClose { registration.remove() }
     }
 
-    suspend fun saveOrUpdateProfile(profile: UserProfile): Result<Unit> {
+    suspend fun saveOrUpdateProfile(profile: FirestoreUserProfile): Result<Unit> {
         saveLocalUserProfile(profile)
         val userId = profile.userId
         if (userId.isNotEmpty() && userId != "local_user") {
@@ -272,7 +272,7 @@ class FirestoreSyncRepository(
         return Result.success(Unit)
     }
 
-    suspend fun recordQuizHistory(history: QuizHistory): Result<Unit> {
+    suspend fun recordQuizHistory(history: FirestoreQuizHistory): Result<Unit> {
         val userId = history.userId
         if (userId.isNotEmpty() && userId != "local_user") {
             try {

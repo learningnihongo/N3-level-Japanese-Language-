@@ -403,9 +403,11 @@ fun MainApp(
 
                     composable(Screen.Quiz.route) {
                         QuizScreen(
-                            quizViewModel = quizViewModel,
-                            onNavigateToHistory = {
-                                navController.navigate(Screen.QuizHistory.route)
+                            onBackClick = {
+                                navController.popBackStack()
+                            },
+                            onQuizFinished = { score, total, xpEarned ->
+                                navController.popBackStack()
                             }
                         )
                     }
@@ -440,9 +442,12 @@ fun MainApp(
 
                     composable(Screen.Flashcard.route) {
                         FlashcardScreen(
-                            vocabViewModel = vocabViewModel,
-                            onNavigateBack = {
+                            customCards = emptyList(),
+                            onBackClick = {
                                 navController.popBackStack()
+                            },
+                            onReviewCompleted = { _ ->
+                                // Completed review
                             }
                         )
                     }

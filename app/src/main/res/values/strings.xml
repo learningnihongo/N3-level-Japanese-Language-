@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KanjiKotoba</string>
+    <string name="default_web_client_id" translatable="false">605979734970-2tf1v8bo84o3ou4jaeifhupmc6ho2ng9.apps.googleusercontent.com</string>
+</resources>

@@ -6,7 +6,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -43,10 +45,27 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun KanjiKotobaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeSettings: AppThemeSettings = AppThemeSettings(),
+    darkTheme: Boolean = when (themeSettings.themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    },
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val palettePrimary = if (darkTheme) themeSettings.themePalette.primaryDarkColor else themeSettings.themePalette.primaryColor
+    val colorScheme = if (darkTheme) {
+        DarkColorScheme.copy(
+            primary = palettePrimary,
+            surface = if (themeSettings.oledBlack) Color.Black else DarkSurface,
+            background = if (themeSettings.oledBlack) Color.Black else DarkBackground
+        )
+    } else {
+        LightColorScheme.copy(
+            primary = palettePrimary
+        )
+    }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -56,8 +75,10 @@ fun KanjiKotobaTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+    CompositionLocalProvider(LocalAppThemeSettings provides themeSettings) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
 }

@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -31,9 +30,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.PanTool
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Swipe
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -86,6 +85,7 @@ fun PastExamFlashcardView(
     var gestureStyle by remember { mutableStateOf(FlashcardGestureStyle.SWIPE_REVIEW) }
     var shuffleMode by remember { mutableStateOf(FlashcardShuffleMode.SMART_SRS) }
     var showShuffleDialog by remember { mutableStateOf(false) }
+    var showGestureDialog by remember { mutableStateOf(false) }
     var shuffleFeedbackMessage by remember { mutableStateOf<String?>(null) }
 
     var dragOffsetX by remember { mutableFloatStateOf(0f) }
@@ -112,10 +112,10 @@ fun PastExamFlashcardView(
         dragOffsetY = 0f
     }
 
-    // Auto-dismiss shuffle feedback toast after 3.5 seconds
+    // Auto-dismiss shuffle feedback toast after 3 seconds
     LaunchedEffect(shuffleFeedbackMessage) {
         if (shuffleFeedbackMessage != null) {
-            delay(3500)
+            delay(3000)
             shuffleFeedbackMessage = null
         }
     }
@@ -158,10 +158,10 @@ fun PastExamFlashcardView(
         dragOffsetY = 0f
         val weakCount = workingDeck.count { it.isBookmarked || it.timesIncorrect > 0 || it.masteryLevel <= 1 }
         shuffleFeedbackMessage = when (shuffleMode) {
-            FlashcardShuffleMode.SMART_SRS -> "⚡ Smart SRS Shuffle: ခက်ခဲသော $weakCount ကတ်ကို ရှေ့ဆုံးသို့ စီစဉ်ထားပါသည်"
+            FlashcardShuffleMode.SMART_SRS -> "⚡ Smart SRS: ခက်ခဲသော $weakCount ကတ်ကို ဦးစားပေးထားပါသည်"
             FlashcardShuffleMode.DIFFICULT_ONLY -> "🔥 ခက်ခဲသော $weakCount ကတ်ကို သီးသန့်ရွေးထုတ်ထားပါသည်"
-            FlashcardShuffleMode.TRUE_RANDOM -> "🎲 ကျပန်း ရောနှောစီစဉ်ပြီးပါပြီ (${workingDeck.size} ကတ်)"
-            FlashcardShuffleMode.EXAM_CHRONO -> "📋 မေးခွန်းနံပါတ်စဉ် မူလအတိုင်း ပြန်လည်ထားရှိပါသည်"
+            FlashcardShuffleMode.TRUE_RANDOM -> "🎲 ကျပန်း ရောနှောပြီးပါပြီ (${workingDeck.size} ကတ်)"
+            FlashcardShuffleMode.EXAM_CHRONO -> "📋 မေးခွန်းစဉ် မူလအတိုင်း ပြန်လည်ထားရှိပါသည်"
         }
     }
 
@@ -186,20 +186,24 @@ fun PastExamFlashcardView(
         )
     }
 
+    if (showGestureDialog) {
+        PastExamGestureSelectorDialog(
+            currentStyle = gestureStyle,
+            onStyleChange = { newStyle ->
+                gestureStyle = newStyle
+            },
+            onDismiss = { showGestureDialog = false }
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // 1. Gesture Style Selector (Swipe SRS, Slide Carousel, Vertical Flip, Tap)
-        PastExamGestureSelector(
-            currentStyle = gestureStyle,
-            onStyleChange = { gestureStyle = it }
-        )
-
-        // 2. Exam Session Filter Chips Row
+        // 1. Exam Session Filter Row
         PastExamSessionSelector(
             allCardsCount = allPastExamCards.size,
             workingDeckCount = workingDeck.size,
@@ -207,7 +211,7 @@ fun PastExamFlashcardView(
             onSelectSession = { selectedSessionCode = it }
         )
 
-        // Shuffle Feedback Toast Banner
+        // Shuffle Feedback Toast
         AnimatedVisibility(
             visible = shuffleFeedbackMessage != null,
             enter = fadeIn(),
@@ -226,7 +230,7 @@ fun PastExamFlashcardView(
                 ) {
                     Text(
                         text = shuffleFeedbackMessage ?: "",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
@@ -246,37 +250,47 @@ fun PastExamFlashcardView(
             }
         }
 
-        // 3. Progress & Flip Orientation Bar
+        // 2. Compact Top Toolbar: Progress Pill + Gesture Mode Pill + Language Face Toggle
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "ကတ်နံပါတ် ${currentIndex + 1} / ${workingDeck.size}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (isFlipped) "အဖြေကြည့်နေသည် (Answer)" else "ရှေ့မျက်နှာ (Question)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+            // Progress Indicator Badge
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "ကတ်နံပါတ် ${currentIndex + 1} / ${workingDeck.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (isFlipped) "• အဖြေ" else "• မေးခွန်း",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isFlipped) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    )
+                }
             }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Quick 1-tap gesture style switcher
+                // Compact Gesture Mode Button
                 OutlinedButton(
-                    onClick = {
-                        val nextIdx = (gestureStyle.ordinal + 1) % FlashcardGestureStyle.entries.size
-                        gestureStyle = FlashcardGestureStyle.entries[nextIdx]
-                    },
+                    onClick = { showGestureDialog = true },
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.testTag("past_exam_gesture_btn")
                 ) {
                     Icon(
                         imageVector = when (gestureStyle) {
@@ -285,33 +299,35 @@ fun PastExamFlashcardView(
                             FlashcardGestureStyle.VERTICAL_FLIP -> Icons.Default.Flip
                             FlashcardGestureStyle.TAP_ONLY -> Icons.Default.TouchApp
                         },
-                        contentDescription = "Cycle Gesture Style",
+                        contentDescription = "Gesture Mode",
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = gestureStyle.burmeseLabel,
-                        fontSize = 11.sp,
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
 
-                // Language front face toggle
+                // Front Face Language Toggle
                 OutlinedButton(
                     onClick = { isFrontJapanese = !isFrontJapanese },
                     shape = RoundedCornerShape(12.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.testTag("past_exam_lang_toggle_btn")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Flip,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (isFrontJapanese) "ဂျပန်စာ → မြန်မာ" else "မြန်မာ → ဂျပန်စာ",
+                        text = if (isFrontJapanese) "JP → MM" else "MM → JP",
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -319,32 +335,33 @@ fun PastExamFlashcardView(
             }
         }
 
+        // Linear Progress bar
         LinearProgressIndicator(
             progress = {
                 if (workingDeck.isEmpty()) 0f else (currentIndex + 1).toFloat() / workingDeck.size
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
+                .height(5.dp)
                 .clip(CircleShape),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
 
-        // 4. Interactive 3D Gesture Card Area
+        // 3. Centerpiece 3D Gesture Card
         if (currentCard != null) {
             val gestureModifier = when (gestureStyle) {
                 FlashcardGestureStyle.SWIPE_REVIEW -> {
                     Modifier.pointerInput(currentIndex) {
                         detectDragGestures(
                             onDragEnd = {
-                                if (dragOffsetX > 100f) {
+                                if (dragOffsetX > 90f) {
                                     onRateCard(currentCard, ReviewRating.GOOD)
                                     nextCard()
-                                } else if (dragOffsetX < -100f) {
+                                } else if (dragOffsetX < -90f) {
                                     onRateCard(currentCard, ReviewRating.AGAIN)
                                     nextCard()
-                                } else if (abs(dragOffsetY) > 80f) {
+                                } else if (abs(dragOffsetY) > 75f) {
                                     isFlipped = !isFlipped
                                 }
                                 dragOffsetX = 0f
@@ -394,9 +411,9 @@ fun PastExamFlashcardView(
                             onDragEnd = {
                                 if (abs(dragOffsetY) > 60f) {
                                     isFlipped = !isFlipped
-                                } else if (dragOffsetX > 85f) {
+                                } else if (dragOffsetX > 80f) {
                                     prevCard()
-                                } else if (dragOffsetX < -85f) {
+                                } else if (dragOffsetX < -80f) {
                                     nextCard()
                                 }
                                 dragOffsetX = 0f
@@ -420,7 +437,7 @@ fun PastExamFlashcardView(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(340.dp)
+                    .height(360.dp)
                     .offset {
                         when (gestureStyle) {
                             FlashcardGestureStyle.SWIPE_REVIEW -> IntOffset(dragOffsetX.roundToInt(), (dragOffsetY * 0.25f).roundToInt())
@@ -474,7 +491,7 @@ fun PastExamFlashcardView(
                     if (dragOffsetX > 35f) {
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = MasteredGreen.copy(alpha = 0.92f),
+                            color = MasteredGreen.copy(alpha = 0.94f),
                             border = BorderStroke(2.dp, Color.White),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
@@ -497,7 +514,7 @@ fun PastExamFlashcardView(
                     } else {
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = JapaneseCrimson.copy(alpha = 0.92f),
+                            color = JapaneseCrimson.copy(alpha = 0.94f),
                             border = BorderStroke(2.dp, Color.White),
                             modifier = Modifier
                                 .align(Alignment.TopStart)
@@ -524,7 +541,7 @@ fun PastExamFlashcardView(
                 if (gestureStyle == FlashcardGestureStyle.SLIDE_CAROUSEL && abs(dragOffsetX) > 35f) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
                         modifier = Modifier
                             .align(if (dragOffsetX > 0) Alignment.CenterStart else Alignment.CenterEnd)
                             .padding(16.dp)
@@ -543,7 +560,7 @@ fun PastExamFlashcardView(
                 if (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP && abs(dragOffsetY) > 35f) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.92f),
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(16.dp)
@@ -559,7 +576,7 @@ fun PastExamFlashcardView(
                 }
             }
 
-            // 5. SRS Rating & Navigation Controls with Smart Shuffle
+            // 4. SRS Recall & Navigation Controls Bar
             PastExamBottomControls(
                 currentCard = currentCard,
                 currentIndex = currentIndex,
@@ -572,7 +589,8 @@ fun PastExamFlashcardView(
                 onNext = { nextCard() },
                 onShuffle = { shuffleDeck() },
                 onOpenShuffleDialog = { showShuffleDialog = true },
-                onReset = { resetDeck() }
+                onReset = { resetDeck() },
+                modifier = Modifier.testTag("past_exam_bottom_controls")
             )
         }
     }

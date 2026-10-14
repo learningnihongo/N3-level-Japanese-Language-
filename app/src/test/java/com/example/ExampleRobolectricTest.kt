@@ -293,10 +293,10 @@ class ExampleRobolectricTest {
   @Test
   fun `flashcard screen route and sample data contain valid Burmese meanings and readings`() {
     assertEquals("flashcard", com.example.ui.navigation.Screen.Flashcard.route)
-    val sampleCards = com.example.ui.screens.SAMPLE_N3_FLASHCARDS
+    val sampleCards = com.example.data.seed.SeedData.kotobaList
     assertTrue(sampleCards.isNotEmpty())
     sampleCards.forEach { card ->
-      assertTrue(card.kanji.isNotBlank())
+      assertTrue(card.word.isNotBlank())
       assertTrue(card.reading.isNotBlank())
       assertTrue(card.meaningBurmese.isNotBlank())
     }
