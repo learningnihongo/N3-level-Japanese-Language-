@@ -20,7 +20,7 @@ import org.json.JSONObject
 
 class FirestoreSyncRepository(
     private val context: Context,
-    private val db: FirebaseFirestore
+    private val db: FirebaseFirestore?
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("kanji_kotoba_prefs", Context.MODE_PRIVATE)
 
@@ -36,9 +36,22 @@ class FirestoreSyncRepository(
         private const val KEY_LOCAL_STUDIED_COUNT = "local_studied_count"
 
         fun create(context: Context): FirestoreSyncRepository {
-            val databaseId = context.getString(R.string.firestore_database_id)
-            val instance = FirebaseFirestore.getInstance(databaseId)
-            return FirestoreSyncRepository(context.applicationContext, instance)
+            val dbInstance = try {
+                val databaseId = try {
+                    context.getString(R.string.firestore_database_id)
+                } catch (e: Exception) {
+                    null
+                }
+                if (!databaseId.isNullOrBlank()) {
+                    FirebaseFirestore.getInstance(databaseId)
+                } else {
+                    FirebaseFirestore.getInstance()
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "FirebaseFirestore not available, running in local offline mode: ${e.message}")
+                null
+            }
+            return FirestoreSyncRepository(context.applicationContext, dbInstance)
         }
     }
 
@@ -148,13 +161,14 @@ class FirestoreSyncRepository(
         val localList = getLocalCustomCards()
         trySend(localList)
 
-        if (userId.isNullOrEmpty()) {
+        val currentDb = db
+        if (userId.isNullOrEmpty() || currentDb == null) {
             awaitClose { }
             return@callbackFlow
         }
 
         // Authenticated: Listen to Firestore and merge
-        val colRef = db.collection("users").document(userId).collection("custom_flashcards")
+        val colRef = currentDb.collection("users").document(userId).collection("custom_flashcards")
         val registration = colRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Log.w(TAG, "Error observing custom flashcards from Firestore: ${error.message}")
@@ -185,12 +199,13 @@ class FirestoreSyncRepository(
         // 1. Save to local storage first (instant durability)
         saveLocalCustomCard(card)
 
-        // 2. If signed in, sync to Firestore
+        // 2. If signed in and Firestore available, sync to Firestore
         val userId = card.userId
-        if (userId.isNotEmpty() && userId != "local" && userId != "local_user") {
+        val currentDb = db
+        if (currentDb != null && userId.isNotEmpty() && userId != "local" && userId != "local_user") {
             try {
                 val cardId = if (card.id.isNotEmpty()) card.id else "card_${System.currentTimeMillis()}"
-                val docRef = db.collection("users").document(userId).collection("custom_flashcards").document(cardId)
+                val docRef = currentDb.collection("users").document(userId).collection("custom_flashcards").document(cardId)
                 val data = mutableMapOf<String, Any>(
                     "id" to cardId,
                     "userId" to userId,
@@ -231,9 +246,10 @@ class FirestoreSyncRepository(
 
     suspend fun deleteCustomFlashcard(userId: String, cardId: String): Result<Unit> {
         deleteLocalCustomCard(cardId)
-        if (userId.isNotEmpty() && userId != "local" && userId != "local_user") {
+        val currentDb = db
+        if (currentDb != null && userId.isNotEmpty() && userId != "local" && userId != "local_user") {
             try {
-                db.collection("users").document(userId).collection("custom_flashcards").document(cardId).delete().await()
+                currentDb.collection("users").document(userId).collection("custom_flashcards").document(cardId).delete().await()
             } catch (e: Exception) {
                 Log.w(TAG, "Cloud delete failed: ${e.message}")
             }
@@ -249,12 +265,13 @@ class FirestoreSyncRepository(
         val local = getLocalUserProfile()
         trySend(local)
 
-        if (userId.isNullOrEmpty()) {
+        val currentDb = db
+        if (userId.isNullOrEmpty() || currentDb == null) {
             awaitClose { }
             return@callbackFlow
         }
 
-        val docRef = db.collection("users").document(userId)
+        val docRef = currentDb.collection("users").document(userId)
         val registration = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 trySend(getLocalUserProfile())
@@ -276,9 +293,10 @@ class FirestoreSyncRepository(
     suspend fun saveOrUpdateProfile(profile: FirestoreUserProfile): Result<Unit> {
         saveLocalUserProfile(profile)
         val userId = profile.userId
-        if (userId.isNotEmpty() && userId != "local_user") {
+        val currentDb = db
+        if (currentDb != null && userId.isNotEmpty() && userId != "local_user") {
             try {
-                val docRef = db.collection("users").document(userId)
+                val docRef = currentDb.collection("users").document(userId)
                 val data = mutableMapOf<String, Any>(
                     "userId" to userId,
                     "displayName" to profile.displayName,
@@ -349,13 +367,14 @@ class FirestoreSyncRepository(
     }
 
     fun observeQuizHistories(userId: String?): Flow<List<FirestoreQuizHistory>> = callbackFlow {
-        if (userId.isNullOrEmpty()) {
+        val currentDb = db
+        if (userId.isNullOrEmpty() || currentDb == null) {
             trySend(emptyList())
             awaitClose { }
             return@callbackFlow
         }
 
-        val colRef = db.collection("users").document(userId).collection("quiz_histories")
+        val colRef = currentDb.collection("users").document(userId).collection("quiz_histories")
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(30)
 
@@ -377,10 +396,11 @@ class FirestoreSyncRepository(
 
     suspend fun recordQuizHistory(history: FirestoreQuizHistory): Result<Unit> {
         val userId = history.userId
-        if (userId.isNotEmpty() && userId != "local_user") {
+        val currentDb = db
+        if (currentDb != null && userId.isNotEmpty() && userId != "local_user") {
             try {
                 val quizId = if (history.id.isNotEmpty()) history.id else "quiz_${System.currentTimeMillis()}"
-                val docRef = db.collection("users").document(userId).collection("quiz_histories").document(quizId)
+                val docRef = currentDb.collection("users").document(userId).collection("quiz_histories").document(quizId)
                 val data = mapOf(
                     "id" to quizId,
                     "userId" to userId,

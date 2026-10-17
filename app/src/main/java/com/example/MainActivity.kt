@@ -9,6 +9,11 @@ import com.example.ui.MainApp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            com.google.firebase.FirebaseApp.initializeApp(applicationContext)
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "FirebaseApp init fallback: ${e.message}")
+        }
         enableEdgeToEdge()
 
         setContent {

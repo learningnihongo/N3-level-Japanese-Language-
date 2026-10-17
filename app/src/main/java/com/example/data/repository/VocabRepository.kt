@@ -28,31 +28,39 @@ class VocabRepository(
     private val srsReviewDao: SrsReviewDao? = null
 ) {
     suspend fun ensureDataSeeded(forceRefresh: Boolean = false) {
-        val count = vocabDao.getCardCount()
-        val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
-        if (forceRefresh) {
-            vocabDao.clearNonCustomCards()
-            vocabDao.insertCards(allCards)
-        } else if (count < allCards.size) {
-            // Safe non-destructive insert: OnConflictStrategy.IGNORE retains all existing cards and user progress
-            vocabDao.insertCards(allCards)
-        }
-        val profile = userProfileDao.getProfile().firstOrNull()
-        if (profile == null) {
-            userProfileDao.insertProfile(
-                UserProfile(
-                    id = 1,
-                    name = "JLPT N3 Scholar",
-                    targetJlptLevel = "N3",
-                    dailyGoal = 15,
-                    totalXp = 0,
-                    currentStreak = 1,
-                    bestStreak = 1,
-                    lastStudyDate = System.currentTimeMillis()
+        try {
+            val count = vocabDao.getCardCount()
+            val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
+            if (forceRefresh) {
+                vocabDao.clearNonCustomCards()
+                allCards.chunked(100).forEach { chunk ->
+                    vocabDao.insertCards(chunk)
+                }
+            } else if (count < allCards.size) {
+                // Safe non-destructive insert: OnConflictStrategy.IGNORE retains all existing cards and user progress
+                allCards.chunked(100).forEach { chunk ->
+                    vocabDao.insertCards(chunk)
+                }
+            }
+            val profile = userProfileDao.getProfile().firstOrNull()
+            if (profile == null) {
+                userProfileDao.insertProfile(
+                    UserProfile(
+                        id = 1,
+                        name = "JLPT N3 Scholar",
+                        targetJlptLevel = "N3",
+                        dailyGoal = 15,
+                        totalXp = 0,
+                        currentStreak = 1,
+                        bestStreak = 1,
+                        lastStudyDate = System.currentTimeMillis()
+                    )
                 )
-            )
-        } else {
-            syncDailyStreak()
+            } else {
+                syncDailyStreak()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("VocabRepository", "Error in ensureDataSeeded: ${e.message}", e)
         }
     }
 

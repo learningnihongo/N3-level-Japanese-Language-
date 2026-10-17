@@ -65,25 +65,31 @@ abstract class AppDatabase : RoomDatabase() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
                 CoroutineScope(Dispatchers.IO).launch {
-                    val database = getInstance(context)
-                    // Insert Default User Profile
-                    val userProfileDao = database.userProfileDao()
-                    userProfileDao.insertProfile(
-                        UserProfile(
-                            id = 1,
-                            name = "JLPT N3 Scholar",
-                            targetJlptLevel = "N3",
-                            dailyGoal = 15,
-                            totalXp = 0,
-                            currentStreak = 1,
-                            lastStudyDate = System.currentTimeMillis()
+                    try {
+                        val database = getInstance(context)
+                        // Insert Default User Profile
+                        val userProfileDao = database.userProfileDao()
+                        userProfileDao.insertProfile(
+                            UserProfile(
+                                id = 1,
+                                name = "JLPT N3 Scholar",
+                                targetJlptLevel = "N3",
+                                dailyGoal = 15,
+                                totalXp = 0,
+                                currentStreak = 1,
+                                lastStudyDate = System.currentTimeMillis()
+                            )
                         )
-                    )
 
-                    // Pre-populate all vocabulary items
-                    val vocabDao = database.vocabDao()
-                    val allCards = VocabSeedDataApplied.getAllSeedCards()
-                    vocabDao.insertCards(allCards)
+                        // Pre-populate all vocabulary items in safe chunks
+                        val vocabDao = database.vocabDao()
+                        val allCards = VocabSeedDataApplied.getAllSeedCards()
+                        allCards.chunked(100).forEach { chunk ->
+                            vocabDao.insertCards(chunk)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("AppDatabase", "Error seeding database on create: ${e.message}", e)
+                    }
                 }
             }
         }

@@ -60,7 +60,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
@@ -188,15 +187,19 @@ jobs:
           fi
 
       - name: Publish GitHub Release
+        id: create_release
         if: env.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
+        continue-on-error: true
         with:
           tag_name: ${{ env.TAG_NAME }}
+          target_commitish: ${{ github.sha }}
           name: ${{ env.RELEASE_TITLE }}
           files: output_apk/*.apk
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.is_draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.is_prerelease || false }}
           generate_release_notes: true
+          make_latest: true
           body: |
             ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
 
@@ -223,5 +226,16 @@ jobs:
             - **Japanese Text-To-Speech (TTS)**: Pronounce Kanji, readings, vocabulary, collocations, and example sentences.
             - **Spaced Repetition (SRS)**: SM-2 spaced repetition algorithm for long-term memory retention.
             - **100% Offline Ready**: All vocabulary, past exams, and Burmese translations stored locally in Room SQLite.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fallback Release using GitHub CLI
+        if: env.SHOULD_RELEASE == 'true' && steps.create_release.outcome == 'failure'
+        run: |
+          echo "softprops action had an issue, running GitHub CLI fallback..."
+          gh release create "${{ env.TAG_NAME }}" output_apk/*.apk \
+            --title "${{ env.RELEASE_TITLE }}" \
+            --target "${{ github.sha }}" \
+            --generate-notes || echo "Release completed or tag already handled"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

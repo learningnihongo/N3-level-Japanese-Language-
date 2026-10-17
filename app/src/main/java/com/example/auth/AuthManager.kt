@@ -18,25 +18,54 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class AuthManager(private val context: Context) {
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val credentialManager: CredentialManager = CredentialManager.create(context)
+    private val auth: FirebaseAuth? = try {
+        FirebaseAuth.getInstance()
+    } catch (e: Throwable) {
+        Log.w(TAG, "FirebaseAuth initialization fallback: ${e.message}")
+        null
+    }
+    private val credentialManager: CredentialManager = try {
+        CredentialManager.create(context)
+    } catch (e: Throwable) {
+        Log.w(TAG, "CredentialManager initialization fallback: ${e.message}")
+        CredentialManager.create(context.applicationContext)
+    }
 
     companion object {
         private const val TAG = "AuthManager"
     }
 
     val currentUser: FirebaseUser?
-        get() = auth.currentUser
+        get() = try {
+            auth?.currentUser
+        } catch (e: Throwable) {
+            null
+        }
 
     fun authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
+        val currentAuth = auth
+        if (currentAuth == null) {
+            trySend(null)
+            awaitClose { }
+            return@callbackFlow
+        }
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             trySend(firebaseAuth.currentUser)
         }
-        auth.addAuthStateListener(listener)
-        awaitClose { auth.removeAuthStateListener(listener) }
+        try {
+            currentAuth.addAuthStateListener(listener)
+        } catch (e: Throwable) {
+            trySend(null)
+        }
+        awaitClose { 
+            try {
+                currentAuth.removeAuthStateListener(listener)
+            } catch (_: Throwable) {}
+        }
     }
 
     suspend fun signInWithGoogle(): Result<FirebaseUser> {
+        val currentAuth = auth ?: return Result.failure(Exception("Firebase Auth is not available on this device"))
         return try {
             val webClientId = context.getString(R.string.default_web_client_id)
             val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(webClientId)
@@ -56,7 +85,7 @@ class AuthManager(private val context: Context) {
                 val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                 val idToken = googleIdTokenCredential.idToken
                 val authCredential = GoogleAuthProvider.getCredential(idToken, null)
-                val authResult = auth.signInWithCredential(authCredential).await()
+                val authResult = currentAuth.signInWithCredential(authCredential).await()
                 val user = authResult.user
                 if (user != null) {
                     Result.success(user)
@@ -80,7 +109,7 @@ class AuthManager(private val context: Context) {
 
     fun signOut() {
         try {
-            auth.signOut()
+            auth?.signOut()
         } catch (e: Exception) {
             Log.e(TAG, "Error during sign out", e)
         }
