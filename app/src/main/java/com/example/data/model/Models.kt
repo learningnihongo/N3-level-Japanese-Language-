@@ -17,6 +17,11 @@ data class FirestoreUserProfile(
     val totalXp: Long = 0L,
     val currentStreak: Long = 1L,
     val bestStreak: Long = 1L,
+    val flashcardFrontLang: String = "Japanese",
+    val autoPlayTts: Boolean = false,
+    val gestureStyle: String = "SWIPE_REVIEW",
+    val shuffleMode: String = "DEFAULT",
+    val cardsStudiedCount: Long = 0L,
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
 )
@@ -30,11 +35,19 @@ data class CustomFlashcard(
     val back: String = "",
     val cardType: String = "Kotoba",
     val category: String = "Custom",
+    val deckName: String = "General",
     val exampleSentence: String = "",
     val exampleMeaning: String = "",
     val masteryLevel: Long = 0L,
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
+)
+
+data class CustomDeck(
+    val name: String,
+    val cardCount: Int,
+    val description: String = "",
+    val cards: List<CustomFlashcard> = emptyList()
 )
 
 @IgnoreExtraProperties

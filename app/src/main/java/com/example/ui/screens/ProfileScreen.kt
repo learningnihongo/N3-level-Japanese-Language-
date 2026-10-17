@@ -30,17 +30,23 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,7 +62,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -85,6 +94,7 @@ import com.example.ui.components.QuizStreakDetailsDialog
 import com.example.ui.components.QuizStreakHeaderBadge
 import com.example.ui.components.TrophyShowcaseCard
 import com.example.ui.components.VoiceSettingsCard
+import com.example.ui.components.WeeklyMasteryProgressChartCard
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseIndigo
 import com.example.ui.theme.MasteredGreen
@@ -105,6 +115,8 @@ private val PRESET_AVATARS = listOf(
 @Composable
 fun ProfileScreen(
     vocabViewModel: VocabViewModel,
+    onNavigateToCustomDecks: () -> Unit = {},
+    onNavigateToQuiz: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val profile by vocabViewModel.userProfile.collectAsState()
@@ -117,6 +129,9 @@ fun ProfileScreen(
     val voiceSettings by vocabViewModel.voiceSettings.collectAsState()
     val isSpeaking by vocabViewModel.isSpeaking.collectAsState()
     val quizStreak by vocabViewModel.quizStreakInfo.collectAsState()
+    val recentQuizzes by vocabViewModel.recentQuizHistories.collectAsState()
+    val customCards by vocabViewModel.cloudCustomCards.collectAsState()
+    val weeklySummary by vocabViewModel.weeklyMasteryVsReviewedStats.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showStreakDetailsDialog by remember { mutableStateOf(false) }
@@ -124,9 +139,16 @@ fun ProfileScreen(
     var selectedSegmentIndex by remember { mutableIntStateOf(0) }
 
     val segments = listOf(
-        Pair("Settings & Audio", Icons.Default.Tune),
+        Pair("Settings & Flashcards", Icons.Default.Tune),
+        Pair("Quiz Results (${recentQuizzes.size})", Icons.Default.Quiz),
         Pair("Badges & Trophies", Icons.Default.EmojiEvents)
     )
+
+    val currentUser by vocabViewModel.currentUser.collectAsState()
+    val firestoreProfile by vocabViewModel.firestoreUserProfile.collectAsState()
+    var isSigningIn by remember { mutableStateOf(false) }
+    var authErrorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     LazyColumn(
         modifier = modifier
@@ -135,6 +157,152 @@ fun ProfileScreen(
         contentPadding = PaddingValues(bottom = 96.dp, top = 16.dp, start = 18.dp, end = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 0. Cloud Account & Authentication Status Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("profile_auth_cloud_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (currentUser != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    else MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(
+                    1.5.dp,
+                    if (currentUser != null) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (currentUser != null) MasteredGreen.copy(alpha = 0.15f) else JapaneseCrimson.copy(alpha = 0.12f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (currentUser != null) Icons.Default.CloudDone else Icons.Default.CloudUpload,
+                                        contentDescription = "Cloud Status",
+                                        tint = if (currentUser != null) MasteredGreen else JapaneseCrimson,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                Text(
+                                    text = if (currentUser != null) "Cloud Account Connected" else "Cloud Account (Google Sign-In)",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (currentUser != null) (currentUser?.email ?: "Synced with Firestore")
+                                    else "Sign in to save study progress, quizzes & custom decks",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (currentUser != null) {
+                            IconButton(
+                                onClick = { vocabViewModel.signOut() },
+                                modifier = Modifier.testTag("profile_sign_out_btn")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Logout,
+                                    contentDescription = "Sign Out",
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+
+                    if (currentUser == null) {
+                        Button(
+                            onClick = {
+                                isSigningIn = true
+                                authErrorMessage = null
+                                coroutineScope.launch {
+                                    val res = vocabViewModel.signInWithGoogle()
+                                    isSigningIn = false
+                                    if (res.isFailure) {
+                                        authErrorMessage = res.exceptionOrNull()?.localizedMessage ?: "Sign-in cancelled"
+                                    }
+                                }
+                            },
+                            enabled = !isSigningIn,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = JapaneseCrimson,
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp)
+                                .testTag("profile_google_signin_btn")
+                        ) {
+                            if (isSigningIn) {
+                                Text("Connecting to Google...", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            } else {
+                                Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sign in with Google • အကောင့်ဝင်ရန်", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        authErrorMessage?.let { err ->
+                            Text(
+                                text = "Notice: $err",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "✓ Real-time Sync Active",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MasteredGreen
+                                )
+                                Text(
+                                    text = "Firestore Cloud",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 1. Zen Unified Profile & XP Header Card
         item {
             Card(
@@ -493,8 +661,80 @@ fun ProfileScreen(
             ) { segmentIndex ->
                 when (segmentIndex) {
                     0 -> {
-                        // SEGMENT 0: Settings & Preferences
+                        // SEGMENT 0: Settings & Flashcards
                         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // 1. Custom Decks & Flashcards Shortcut Card
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("profile_custom_decks_card"),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, JapaneseCrimson.copy(alpha = 0.35f)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(JapaneseCrimson.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Style,
+                                            contentDescription = null,
+                                            tint = JapaneseCrimson,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Custom Flashcard Decks",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "${customCards.size} cards • Library & Custom Words",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = onNavigateToCustomDecks,
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text("Open Decks", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
+                            // 2. Personalized Flashcard Settings Card
+                            PersonalizedFlashcardSettingsCard(
+                                firestoreProfile = firestoreProfile,
+                                onUpdateSettings = { frontLang, tts, gesture, shuffle ->
+                                    vocabViewModel.updateProfileSettings(
+                                        displayName = profile?.name ?: "Learner",
+                                        targetJlptLevel = profile?.targetJlptLevel ?: "N3",
+                                        dailyGoal = (profile?.dailyGoal ?: 15).toLong(),
+                                        frontLang = frontLang,
+                                        autoPlayTts = tts,
+                                        gestureStyle = gesture,
+                                        shuffleMode = shuffle
+                                    )
+                                }
+                            )
+
                             // Reminder Settings
                             DailyReminderSettingsCard(
                                 settings = reminderSettings,
@@ -547,48 +787,169 @@ fun ProfileScreen(
                                 },
                                 onToggleOledBlack = { oled ->
                                     vocabViewModel.setOledBlack(oled)
+                                },
+                                onSelectAesthetic = { aesthetic ->
+                                    vocabViewModel.setThemeAesthetic(aesthetic)
                                 }
                             )
 
-                            // Compact Offline Storage & Engine Info Card
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-                                modifier = Modifier.fillMaxWidth()
+                        }
+                    }
+
+                    1 -> {
+                        // SEGMENT 1: Quiz Results & History
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                Text(
+                                    text = "Quiz Results & History (${recentQuizzes.size})",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Button(
+                                    onClick = onNavigateToQuiz,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = JapaneseCrimson),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CloudDone,
-                                        contentDescription = "Offline Ready",
-                                        tint = MasteredGreen,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                        Text(
-                                            text = "100% Offline Ready · Room SQLite",
-                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.onSurface
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("New Quiz", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            // Interactive Weekly Quiz Performance & Progress Trends Line Graph (Recharts / D3)
+                            WeeklyMasteryProgressChartCard(
+                                weeklySummary = weeklySummary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("profile_weekly_performance_chart")
+                            )
+
+                            if (recentQuizzes.isEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Quiz,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(44.dp),
+                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                         )
                                         Text(
-                                            text = "All $totalCards JLPT N3 vocabulary, Burmese meanings, and SRS states stored locally.",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            text = "Quiz ဖြေဆိုထားသော မှတ်တမ်း မရှိသေးပါ",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                                         )
+                                        Text(
+                                            text = "Quiz စတင်ဖြေဆိုပြီး အမှတ်နှင့် XP များကို Profile တွင် သိမ်းဆည်းပါ",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            } else {
+                                for (history in recentQuizzes.take(15)) {
+                                    val accuracyPct = if (history.totalQuestions > 0) {
+                                        ((history.score.toFloat() / history.totalQuestions) * 100).toInt()
+                                    } else 0
+
+                                    Card(
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(42.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        if (accuracyPct >= 80) MasteredGreen.copy(alpha = 0.15f)
+                                                        else JapaneseIndigo.copy(alpha = 0.15f)
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "$accuracyPct%",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (accuracyPct >= 80) MasteredGreen else JapaneseIndigo
+                                                )
+                                            }
+
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        text = history.quizType,
+                                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                                    )
+                                                    if (history.lessonFilter.isNotEmpty()) {
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Text(
+                                                            text = "• ${history.lessonFilter}",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                                Text(
+                                                    text = "Score: ${history.score} / ${history.totalQuestions} questions",
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = StreakOrange.copy(alpha = 0.12f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.EmojiEvents,
+                                                        contentDescription = null,
+                                                        tint = StreakOrange,
+                                                        modifier = Modifier.size(13.dp)
+                                                    )
+                                                    Text(
+                                                        text = "+${history.xpEarned} XP",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = StreakOrange
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    1 -> {
-                        // SEGMENT 1: Achievements & Trophies Showcase
+                    2 -> {
+                        // SEGMENT 2: Achievements & Trophies Showcase
                         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             TrophyShowcaseCard(
                                 badges = badges,
@@ -958,3 +1319,196 @@ private fun EditProfileWithAvatarDialog(
         }
     }
 }
+
+@Composable
+private fun PersonalizedFlashcardSettingsCard(
+    firestoreProfile: com.example.data.model.FirestoreUserProfile?,
+    onUpdateSettings: (frontLang: String, tts: Boolean, gesture: String, shuffle: String) -> Unit
+) {
+    var frontLang by remember(firestoreProfile) {
+        mutableStateOf(firestoreProfile?.flashcardFrontLang ?: "Japanese")
+    }
+    var autoPlayTts by remember(firestoreProfile) {
+        mutableStateOf(firestoreProfile?.autoPlayTts ?: false)
+    }
+    var gestureStyle by remember(firestoreProfile) {
+        mutableStateOf(firestoreProfile?.gestureStyle ?: "SWIPE_REVIEW")
+    }
+    var shuffleMode by remember(firestoreProfile) {
+        mutableStateOf(firestoreProfile?.shuffleMode ?: "DEFAULT")
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("personalized_flashcard_settings_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = null,
+                    tint = JapaneseCrimson,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column {
+                    Text(
+                        text = "Personalized Flashcard Settings",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "စိတ်ကြိုက် Flashcard ပြသမှုနှင့် အလေ့အထများ",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+            // 1. Front Card Language
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Front Card Language (ကတ်မျက်နှာပြင်):",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = frontLang == "Japanese",
+                        onClick = {
+                            frontLang = "Japanese"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Japanese First (日本語)", fontSize = 12.sp) },
+                        leadingIcon = if (frontLang == "Japanese") {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                        } else null
+                    )
+                    FilterChip(
+                        selected = frontLang == "Burmese",
+                        onClick = {
+                            frontLang = "Burmese"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Burmese First (မြန်မာ)", fontSize = 12.sp) },
+                        leadingIcon = if (frontLang == "Burmese") {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                        } else null
+                    )
+                }
+            }
+
+            // 2. Audio TTS Auto-Play on Flip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Auto-play Japanese Audio",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "ကတ်လှန်ချိန်တွင် ဂျပန်အသံထွက်ကို အလိုအလျောက် ဖွင့်ပေးမည်",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = autoPlayTts,
+                    onCheckedChange = { checked ->
+                        autoPlayTts = checked
+                        onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                    }
+                )
+            }
+
+            // 3. Gesture Interaction Style
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Flashcard Gesture Style (ကတ်ထိန်းချုပ်မှု ပုံစံ):",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = gestureStyle == "SWIPE_REVIEW",
+                        onClick = {
+                            gestureStyle = "SWIPE_REVIEW"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Swipe Review", fontSize = 11.5.sp) }
+                    )
+                    FilterChip(
+                        selected = gestureStyle == "TAP_ONLY",
+                        onClick = {
+                            gestureStyle = "TAP_ONLY"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Tap Flip", fontSize = 11.5.sp) }
+                    )
+                    FilterChip(
+                        selected = gestureStyle == "VERTICAL_FLIP",
+                        onClick = {
+                            gestureStyle = "VERTICAL_FLIP"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Vertical 3D", fontSize = 11.5.sp) }
+                    )
+                }
+            }
+
+            // 4. Default Shuffle Mode
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Default Card Order (ကတ်အစီအစဉ်):",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = shuffleMode == "DEFAULT",
+                        onClick = {
+                            shuffleMode = "DEFAULT"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Sequential", fontSize = 11.5.sp) }
+                    )
+                    FilterChip(
+                        selected = shuffleMode == "RANDOM",
+                        onClick = {
+                            shuffleMode = "RANDOM"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("True Random", fontSize = 11.5.sp) }
+                    )
+                    FilterChip(
+                        selected = shuffleMode == "WEAK_FIRST",
+                        onClick = {
+                            shuffleMode = "WEAK_FIRST"
+                            onUpdateSettings(frontLang, autoPlayTts, gestureStyle, shuffleMode)
+                        },
+                        label = { Text("Weak Words First", fontSize = 11.5.sp) }
+                    )
+                }
+            }
+        }
+    }
+}
+

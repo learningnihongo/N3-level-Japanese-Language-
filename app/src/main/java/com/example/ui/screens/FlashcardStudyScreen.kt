@@ -154,7 +154,9 @@ import com.example.ui.theme.getSrsGoodBg
 import com.example.ui.theme.getSrsGoodText
 import com.example.ui.theme.getSrsHardBg
 import com.example.ui.theme.getSrsHardText
+import com.example.ui.theme.ThemeAesthetic
 import com.example.ui.theme.ThemeMode
+import com.example.ui.theme.VermilionRed
 import com.example.ui.theme.WeakOrange
 import com.example.ui.components.DistractionFreeFlashcard
 import com.example.ui.components.StudyFlashcardCard
@@ -2621,6 +2623,72 @@ fun FlashcardStudyScreen(
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp)
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // Design Aesthetic (Material 3 vs. Modern Japanese Minimalist)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Design Aesthetic & Washi Texture",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeAesthetic.entries.forEach { aesthetic ->
+                            val isSelected = themeSettings.themeAesthetic == aesthetic
+                            val isWashi = aesthetic == ThemeAesthetic.WASHI_MINIMALIST
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) {
+                                    if (isWashi) VermilionRed.copy(alpha = 0.12f) else MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                },
+                                border = if (isSelected) {
+                                    BorderStroke(1.5.dp, if (isWashi) VermilionRed else MaterialTheme.colorScheme.primary)
+                                } else {
+                                    BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { vocabViewModel.setThemeAesthetic(aesthetic) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = if (isWashi) "和" else "M3",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (isSelected) {
+                                            if (isWashi) VermilionRed else MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isWashi) "Washi Minimalist" else "Material 3",
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) {
+                                            if (isWashi) VermilionRed else MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

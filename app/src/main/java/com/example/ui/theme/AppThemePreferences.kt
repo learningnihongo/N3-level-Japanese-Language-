@@ -90,11 +90,35 @@ enum class IconThemeStyle(
     )
 }
 
+enum class ThemeAesthetic(
+    val titleBurmese: String,
+    val titleJapanese: String,
+    val titleEnglish: String,
+    val description: String,
+    val sealSymbol: String
+) {
+    MATERIAL3(
+        titleBurmese = "Material 3 စံဒီဇိုင်း",
+        titleJapanese = "マテリアル3 (M3)",
+        titleEnglish = "Material 3 Default",
+        description = "Clean modern Android design system with indigo accents and dynamic tonal surfaces",
+        sealSymbol = "M3"
+    ),
+    WASHI_MINIMALIST(
+        titleBurmese = "ဂျပန် ဝါရှီစက္ကူ မီနီမဲလ်",
+        titleJapanese = "和紙ミニマル (Washi Minimalist)",
+        titleEnglish = "Modern Japanese Minimalist",
+        description = "Authentic tactile Washi paper texture, vibrant Japanese Crimson (朱色) seals & Sumi ink lines",
+        sealSymbol = "和"
+    )
+}
+
 data class AppThemeSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themePalette: ThemePalette = ThemePalette.INDIGO,
     val iconThemeStyle: IconThemeStyle = IconThemeStyle.CLASSIC_DYNAMIC,
-    val oledBlack: Boolean = true
+    val oledBlack: Boolean = true,
+    val themeAesthetic: ThemeAesthetic = ThemeAesthetic.MATERIAL3
 )
 
 val LocalAppThemeSettings = staticCompositionLocalOf { AppThemeSettings() }
@@ -128,6 +152,11 @@ class AppThemePreferences(context: Context) {
         _themeSettingsFlow.value = loadSettings()
     }
 
+    fun setThemeAesthetic(aesthetic: ThemeAesthetic) {
+        prefs.edit().putString(KEY_THEME_AESTHETIC, aesthetic.name).apply()
+        _themeSettingsFlow.value = loadSettings()
+    }
+
     fun toggleDarkMode(currentIsDark: Boolean) {
         val nextMode = if (currentIsDark) ThemeMode.LIGHT else ThemeMode.DARK
         setThemeMode(nextMode)
@@ -138,16 +167,19 @@ class AppThemePreferences(context: Context) {
         val paletteStr = prefs.getString(KEY_THEME_PALETTE, ThemePalette.INDIGO.name) ?: ThemePalette.INDIGO.name
         val iconStr = prefs.getString(KEY_ICON_STYLE, IconThemeStyle.CLASSIC_DYNAMIC.name) ?: IconThemeStyle.CLASSIC_DYNAMIC.name
         val oled = prefs.getBoolean(KEY_OLED_BLACK, true)
+        val aestheticStr = prefs.getString(KEY_THEME_AESTHETIC, ThemeAesthetic.MATERIAL3.name) ?: ThemeAesthetic.MATERIAL3.name
 
         val mode = try { ThemeMode.valueOf(modeStr) } catch (e: Exception) { ThemeMode.SYSTEM }
         val palette = try { ThemePalette.valueOf(paletteStr) } catch (e: Exception) { ThemePalette.INDIGO }
         val iconStyle = try { IconThemeStyle.valueOf(iconStr) } catch (e: Exception) { IconThemeStyle.CLASSIC_DYNAMIC }
+        val aesthetic = try { ThemeAesthetic.valueOf(aestheticStr) } catch (e: Exception) { ThemeAesthetic.MATERIAL3 }
 
         return AppThemeSettings(
             themeMode = mode,
             themePalette = palette,
             iconThemeStyle = iconStyle,
-            oledBlack = oled
+            oledBlack = oled,
+            themeAesthetic = aesthetic
         )
     }
 
@@ -156,5 +188,6 @@ class AppThemePreferences(context: Context) {
         private const val KEY_THEME_PALETTE = "key_theme_palette"
         private const val KEY_ICON_STYLE = "key_icon_style"
         private const val KEY_OLED_BLACK = "key_oled_black"
+        private const val KEY_THEME_AESTHETIC = "key_theme_aesthetic"
     }
 }

@@ -7,8 +7,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,10 +82,11 @@ fun PastExamFlashcardView(
     modifier: Modifier = Modifier
 ) {
     var selectedSessionCode by remember { mutableStateOf<String?>(null) }
+    var isKanjiOnly by remember { mutableStateOf(false) }
     var currentIndex by remember { mutableIntStateOf(0) }
     var isFlipped by remember { mutableStateOf(false) }
     var isFrontJapanese by remember { mutableStateOf(true) }
-    var gestureStyle by remember { mutableStateOf(FlashcardGestureStyle.SWIPE_REVIEW) }
+    var gestureStyle by remember { mutableStateOf(FlashcardGestureStyle.SLIDE_CAROUSEL) }
     var shuffleMode by remember { mutableStateOf(FlashcardShuffleMode.SMART_SRS) }
     var showShuffleDialog by remember { mutableStateOf(false) }
     var showGestureDialog by remember { mutableStateOf(false) }
@@ -91,20 +95,25 @@ fun PastExamFlashcardView(
     var dragOffsetX by remember { mutableFloatStateOf(0f) }
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
 
-    val activeDeck = remember(allPastExamCards, selectedSessionCode) {
-        val list = if (selectedSessionCode == null) {
+    val activeDeck = remember(allPastExamCards, selectedSessionCode, isKanjiOnly) {
+        val sessionFiltered = if (selectedSessionCode == null) {
             allPastExamCards
         } else {
             allPastExamCards.filter { it.tags.contains(selectedSessionCode!!) }
         }
-        if (list.isEmpty()) allPastExamCards else list
+        val kanjiFiltered = if (isKanjiOnly) {
+            sessionFiltered.filter { com.example.data.model.PastExamData.hasKanji(it.kanji) }
+        } else {
+            sessionFiltered
+        }
+        if (kanjiFiltered.isEmpty()) allPastExamCards else kanjiFiltered
     }
 
     var workingDeck by remember(activeDeck) {
         mutableStateOf(activeDeck)
     }
 
-    LaunchedEffect(selectedSessionCode, activeDeck) {
+    LaunchedEffect(selectedSessionCode, isKanjiOnly, activeDeck) {
         workingDeck = activeDeck
         currentIndex = 0
         isFlipped = false
@@ -312,6 +321,28 @@ fun PastExamFlashcardView(
                     )
                 }
 
+                // Kanji Only Filter Toggle
+                OutlinedButton(
+                    onClick = { isKanjiOnly = !isKanjiOnly },
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isKanjiOnly) JapaneseCrimson.copy(alpha = 0.12f) else Color.Transparent
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isKanjiOnly) JapaneseCrimson else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.testTag("past_exam_kanji_only_btn")
+                ) {
+                    Text(
+                        text = if (isKanjiOnly) "漢字 (Kanji)" else "အားလုံး (All)",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isKanjiOnly) JapaneseCrimson else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
                 // Front Face Language Toggle
                 OutlinedButton(
                     onClick = { isFrontJapanese = !isFrontJapanese },
@@ -350,88 +381,70 @@ fun PastExamFlashcardView(
 
         // 3. Centerpiece 3D Gesture Card
         if (currentCard != null) {
-            val gestureModifier = when (gestureStyle) {
-                FlashcardGestureStyle.SWIPE_REVIEW -> {
-                    Modifier.pointerInput(currentIndex) {
-                        detectDragGestures(
-                            onDragEnd = {
-                                if (dragOffsetX > 90f) {
-                                    onRateCard(currentCard, ReviewRating.GOOD)
-                                    nextCard()
-                                } else if (dragOffsetX < -90f) {
-                                    onRateCard(currentCard, ReviewRating.AGAIN)
-                                    nextCard()
-                                } else if (abs(dragOffsetY) > 75f) {
-                                    isFlipped = !isFlipped
+            val cardGestureModifier = Modifier.pointerInput(currentIndex, gestureStyle, currentCard) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var isDrag = false
+                    val touchSlop = viewConfiguration.touchSlop
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val current = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (current.changedToUp()) {
+                            current.consume()
+                            if (!isDrag) {
+                                // Tap to flip
+                                isFlipped = !isFlipped
+                            } else {
+                                // Swipe gesture finished
+                                if (gestureStyle == FlashcardGestureStyle.SWIPE_REVIEW) {
+                                    if (dragOffsetX > 60f) {
+                                        onRateCard(currentCard, ReviewRating.GOOD)
+                                        nextCard()
+                                    } else if (dragOffsetX < -60f) {
+                                        onRateCard(currentCard, ReviewRating.AGAIN)
+                                        nextCard()
+                                    }
+                                } else if (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP) {
+                                    if (abs(dragOffsetY) > 60f) {
+                                        isFlipped = !isFlipped
+                                    } else if (dragOffsetX > 60f) {
+                                        prevCard()
+                                    } else if (dragOffsetX < -60f) {
+                                        nextCard()
+                                    }
+                                } else {
+                                    // Default SLIDE_CAROUSEL
+                                    if (dragOffsetX > 60f) {
+                                        prevCard()
+                                    } else if (dragOffsetX < -60f) {
+                                        nextCard()
+                                    }
                                 }
                                 dragOffsetX = 0f
                                 dragOffsetY = 0f
-                            },
-                            onDragCancel = {
-                                dragOffsetX = 0f
-                                dragOffsetY = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                dragOffsetX += dragAmount.x
-                                dragOffsetY += dragAmount.y
                             }
-                        )
+                            break
+                        }
+
+                        val dx = current.position.x - down.position.x
+                        val dy = current.position.y - down.position.y
+
+                        if (!isDrag) {
+                            if (abs(dx) > touchSlop || (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP && abs(dy) > touchSlop)) {
+                                isDrag = true
+                            }
+                        }
+
+                        if (isDrag) {
+                            current.consume()
+                            dragOffsetX = dx
+                            if (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP || gestureStyle == FlashcardGestureStyle.SWIPE_REVIEW) {
+                                dragOffsetY = dy
+                            }
+                        }
                     }
                 }
-                FlashcardGestureStyle.SLIDE_CAROUSEL -> {
-                    Modifier.pointerInput(currentIndex) {
-                        detectDragGestures(
-                            onDragEnd = {
-                                if (dragOffsetX > 75f) {
-                                    prevCard()
-                                } else if (dragOffsetX < -75f) {
-                                    nextCard()
-                                } else if (abs(dragOffsetY) > 75f) {
-                                    isFlipped = !isFlipped
-                                }
-                                dragOffsetX = 0f
-                                dragOffsetY = 0f
-                            },
-                            onDragCancel = {
-                                dragOffsetX = 0f
-                                dragOffsetY = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                dragOffsetX += dragAmount.x
-                                dragOffsetY += dragAmount.y
-                            }
-                        )
-                    }
-                }
-                FlashcardGestureStyle.VERTICAL_FLIP -> {
-                    Modifier.pointerInput(currentIndex) {
-                        detectDragGestures(
-                            onDragEnd = {
-                                if (abs(dragOffsetY) > 60f) {
-                                    isFlipped = !isFlipped
-                                } else if (dragOffsetX > 80f) {
-                                    prevCard()
-                                } else if (dragOffsetX < -80f) {
-                                    nextCard()
-                                }
-                                dragOffsetX = 0f
-                                dragOffsetY = 0f
-                            },
-                            onDragCancel = {
-                                dragOffsetX = 0f
-                                dragOffsetY = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                dragOffsetX += dragAmount.x
-                                dragOffsetY += dragAmount.y
-                            }
-                        )
-                    }
-                }
-                FlashcardGestureStyle.TAP_ONLY -> Modifier
             }
 
             Box(
@@ -461,8 +474,7 @@ fun PastExamFlashcardView(
                         }
                         cameraDistance = 14f * density
                     }
-                    .then(gestureModifier)
-                    .clickable { isFlipped = !isFlipped }
+                    .then(cardGestureModifier)
                     .testTag("past_exam_gesture_card"),
                 contentAlignment = Alignment.Center
             ) {
@@ -482,7 +494,8 @@ fun PastExamFlashcardView(
                         onSpeak = onSpeak,
                         onToggleBookmark = { onToggleBookmark(currentCard) },
                         dragOffsetX = dragOffsetX,
-                        dragOffsetY = dragOffsetY
+                        dragOffsetY = dragOffsetY,
+                        flipVertically = gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP
                     )
                 }
 
@@ -587,6 +600,14 @@ fun PastExamFlashcardView(
                 onFlip = { isFlipped = !isFlipped },
                 onPrev = { prevCard() },
                 onNext = { nextCard() },
+                onSeekToIndex = { newIdx ->
+                    if (newIdx in 0 until workingDeck.size) {
+                        isFlipped = false
+                        dragOffsetX = 0f
+                        dragOffsetY = 0f
+                        currentIndex = newIdx
+                    }
+                },
                 onShuffle = { shuffleDeck() },
                 onOpenShuffleDialog = { showShuffleDialog = true },
                 onReset = { resetDeck() },

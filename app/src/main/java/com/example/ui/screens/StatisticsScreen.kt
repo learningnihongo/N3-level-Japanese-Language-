@@ -724,17 +724,7 @@ fun StatisticsScreen(
             }
         }
 
-        // 5. Visual Summary Dashboard: Daily Streaks, Category Mastery Stacked Bars & Radar View
-        if (selectedFilter == StatsFilter.ALL || selectedFilter == StatsFilter.MASTERY) {
-            item {
-                VisualSummaryDashboardCard(
-                    streakSummary = streakSummary,
-                    categoryStats = kanjiCategories,
-                    allCards = allCards,
-                    onStudyCategory = onNavigateToStudy
-                )
-            }
-        }
+
 
         // 6. Section: Quiz Accuracy Trend & History (Shown for ALL or QUIZ)
         if (selectedFilter == StatsFilter.ALL || selectedFilter == StatsFilter.QUIZ) {

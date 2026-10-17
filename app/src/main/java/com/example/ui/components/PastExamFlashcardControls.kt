@@ -44,6 +44,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +65,9 @@ import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.MasteredGreen
 import com.example.ui.theme.ReviewBlue
 import com.example.ui.theme.WeakOrange
+import com.example.ui.theme.WashiPaperCardLight
+import com.example.ui.theme.WashiBorderLight
+import kotlin.math.roundToInt
 
 /**
  * Clean & Sleek Exam Session Selector Capsules
@@ -376,6 +381,7 @@ fun PastExamBottomControls(
     onFlip: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
+    onSeekToIndex: (Int) -> Unit = {},
     onShuffle: () -> Unit,
     onOpenShuffleDialog: () -> Unit,
     onReset: () -> Unit,
@@ -385,13 +391,59 @@ fun PastExamBottomControls(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Quick Number Scrubber Slider
+            if (totalCount > 1) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "မေးခွန်း အမြန်ရွှေ့ရန် • Quick Jump",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = JapaneseCrimson.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = "ကတ် ${currentIndex + 1} / $totalCount",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = JapaneseCrimson,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Slider(
+                        value = currentIndex.toFloat(),
+                        onValueChange = { onSeekToIndex(it.roundToInt().coerceIn(0, totalCount - 1)) },
+                        valueRange = 0f..(totalCount - 1).toFloat(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = JapaneseCrimson,
+                            activeTrackColor = JapaneseCrimson,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(28.dp)
+                            .testTag("past_exam_card_slider")
+                    )
+                }
+            }
             // SRS Rating Buttons Row
             Column(
                 modifier = Modifier.fillMaxWidth(),

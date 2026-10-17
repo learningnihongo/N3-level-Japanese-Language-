@@ -25,11 +25,18 @@ import com.example.reminder.ReminderSettings
 import com.example.ui.theme.AppThemePreferences
 import com.example.ui.theme.AppThemeSettings
 import com.example.ui.theme.IconThemeStyle
+import com.example.ui.theme.ThemeAesthetic
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.ThemePalette
 import com.example.ui.util.TtsHelper
 import com.example.ui.util.VoiceSettings
 import com.example.ui.util.VoiceSettingsPreferences
+import com.example.auth.AuthManager
+import com.example.data.model.CustomFlashcard
+import com.example.data.model.FirestoreQuizHistory
+import com.example.data.model.FirestoreUserProfile
+import com.example.data.repository.FirestoreSyncRepository
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -230,14 +237,45 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         db.kotobaDao(),
         db.customFlashcardDao()
     )
+    val authManager = AuthManager(application)
+    val firestoreSyncRepo = FirestoreSyncRepository.create(application)
     val ttsHelper = TtsHelper(application)
     private val reminderPrefs = ReminderPreferences(application)
     private val themePrefs = AppThemePreferences(application)
     private val voicePrefs = VoiceSettingsPreferences(application)
 
+    val currentUser: StateFlow<FirebaseUser?> = authManager.authStateFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), authManager.currentUser)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cloudCustomCards: StateFlow<List<CustomFlashcard>> = currentUser.flatMapLatest { user ->
+        if (user != null) {
+            firestoreSyncRepo.getCustomCardsFlow(user.uid)
+        } else {
+            MutableStateFlow(firestoreSyncRepo.getLocalCustomCards())
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val firestoreUserProfile: StateFlow<FirestoreUserProfile?> = currentUser.flatMapLatest { user ->
+        if (user != null) {
+            firestoreSyncRepo.getUserProfileFlow(user.uid)
+        } else {
+            MutableStateFlow(firestoreSyncRepo.getLocalUserProfile())
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), firestoreSyncRepo.getLocalUserProfile())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cloudQuizHistories: StateFlow<List<FirestoreQuizHistory>> = currentUser.flatMapLatest { user ->
+        firestoreSyncRepo.getQuizHistoriesFlow(user?.uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val reminderSettings: StateFlow<ReminderSettings> = reminderPrefs.settingsFlow
     val themeSettings: StateFlow<AppThemeSettings> = themePrefs.themeSettingsFlow
     val voiceSettings: StateFlow<VoiceSettings> = voicePrefs.settingsFlow
+
+    val recentQuizHistories: StateFlow<List<QuizHistory>> = repository.getRecentQuizHistory(20)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // SM-2 Spaced Repetition Schedule and Tracking StateFlows
     val srsScheduleSummary: StateFlow<SrsScheduleSummary> = repository.getSrsScheduleSummary()
@@ -256,6 +294,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     fun setThemePalette(palette: ThemePalette) = themePrefs.setThemePalette(palette)
     fun setIconThemeStyle(style: IconThemeStyle) = themePrefs.setIconThemeStyle(style)
     fun setOledBlack(oled: Boolean) = themePrefs.setOledBlack(oled)
+    fun setThemeAesthetic(aesthetic: ThemeAesthetic) = themePrefs.setThemeAesthetic(aesthetic)
     fun toggleDarkMode(currentIsDark: Boolean) = themePrefs.toggleDarkMode(currentIsDark)
 
     // Voice & Pronunciation Preferences Controls
@@ -1843,6 +1882,170 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
 
     fun triggerTestReminder() {
         ReminderScheduler.sendImmediateTestReminder(getApplication())
+    }
+
+    // Authentication and Cloud Sync Functions
+    suspend fun signInWithGoogle(): Result<FirebaseUser> {
+        val result = authManager.signInWithGoogle()
+        if (result.isSuccess) {
+            val user = result.getOrNull()
+            if (user != null) {
+                // Initialize or sync user profile
+                viewModelScope.launch {
+                    val localProfile = repository.getUserProfileDirect()
+                    val xp = localProfile?.totalXp?.toLong() ?: 0L
+                    val streak = localProfile?.currentStreak?.toLong() ?: 1L
+                    firestoreSyncRepo.updateProfileStats(user.uid, xp, streak)
+                }
+            }
+        }
+        return result
+    }
+
+    fun signOut() {
+        authManager.signOut()
+    }
+
+    fun addCustomCard(
+        front: String,
+        reading: String,
+        back: String,
+        cardType: String = "Kotoba",
+        category: String = "Custom",
+        deckName: String = "General",
+        exampleSentence: String = "",
+        exampleMeaning: String = ""
+    ) {
+        viewModelScope.launch {
+            val user = authManager.currentUser
+            val card = CustomFlashcard(
+                id = "custom_${System.currentTimeMillis()}",
+                userId = user?.uid ?: "local",
+                front = front,
+                reading = reading,
+                back = back,
+                cardType = cardType,
+                category = category,
+                deckName = deckName.ifBlank { "General" },
+                exampleSentence = exampleSentence,
+                exampleMeaning = exampleMeaning,
+                masteryLevel = 0L
+            )
+            if (user != null) {
+                firestoreSyncRepo.saveCustomCard(user.uid, card)
+            } else {
+                firestoreSyncRepo.saveLocalCustomCard(card)
+            }
+        }
+    }
+
+    fun createCustomDeckFromSelection(
+        deckName: String,
+        cards: List<VocabCard>
+    ) {
+        viewModelScope.launch {
+            val user = authManager.currentUser
+            val userId = user?.uid ?: "local"
+            val targetDeck = deckName.ifBlank { "Custom Deck" }
+            val customList = cards.mapIndexed { index, card ->
+                CustomFlashcard(
+                    id = "custom_${System.currentTimeMillis()}_$index",
+                    userId = userId,
+                    front = card.kanji.ifEmpty { card.reading },
+                    reading = card.reading,
+                    back = card.meaningBurmese,
+                    cardType = if (card.lessonNumber >= 100) "PastExam" else "Kotoba",
+                    category = "Custom Deck",
+                    deckName = targetDeck,
+                    exampleSentence = card.exampleSentence,
+                    exampleMeaning = card.exampleMeaningBurmese,
+                    masteryLevel = 0L
+                )
+            }
+            if (user != null) {
+                firestoreSyncRepo.saveBulkCustomCards(user.uid, customList)
+            } else {
+                for (c in customList) {
+                    firestoreSyncRepo.saveLocalCustomCard(c)
+                }
+            }
+        }
+    }
+
+    fun deleteDeck(deckName: String) {
+        viewModelScope.launch {
+            val user = authManager.currentUser
+            val currentCards = cloudCustomCards.value.filter { it.deckName == deckName }
+            for (card in currentCards) {
+                if (user != null) {
+                    firestoreSyncRepo.deleteCustomCard(user.uid, card.id)
+                } else {
+                    firestoreSyncRepo.deleteLocalCustomCard(card.id)
+                }
+            }
+        }
+    }
+
+    fun deleteCustomCard(cardId: String) {
+        viewModelScope.launch {
+            val user = authManager.currentUser
+            if (user != null) {
+                firestoreSyncRepo.deleteCustomCard(user.uid, cardId)
+            } else {
+                firestoreSyncRepo.deleteLocalCustomCard(cardId)
+            }
+        }
+    }
+
+    fun updateProfileSettings(
+        displayName: String,
+        targetJlptLevel: String,
+        dailyGoal: Long,
+        frontLang: String,
+        autoPlayTts: Boolean,
+        gestureStyle: String,
+        shuffleMode: String
+    ) {
+        viewModelScope.launch {
+            val user = authManager.currentUser
+            val current = firestoreUserProfile.value ?: firestoreSyncRepo.getLocalUserProfile()
+            val updated = current.copy(
+                userId = user?.uid ?: "local_user",
+                displayName = displayName.ifBlank { "Learner" },
+                targetJlptLevel = targetJlptLevel,
+                dailyGoal = dailyGoal,
+                flashcardFrontLang = frontLang,
+                autoPlayTts = autoPlayTts,
+                gestureStyle = gestureStyle,
+                shuffleMode = shuffleMode
+            )
+            firestoreSyncRepo.saveOrUpdateProfile(updated)
+            repository.updateProfileName(
+                name = displayName.ifBlank { "Learner" },
+                dailyGoal = dailyGoal.toInt(),
+                targetJlpt = targetJlptLevel
+            )
+        }
+    }
+
+    fun startCustomDeckStudy(cards: List<CustomFlashcard>) {
+        if (cards.isNotEmpty()) {
+            val vocabCards = cards.mapIndexed { index, cc ->
+                VocabCard(
+                    id = (cc.id.hashCode().toLong() and 0x7FFFFFFFL) + index,
+                    lessonNumber = 999,
+                    lessonTitle = cc.deckName,
+                    sectionTitle = "Custom Deck",
+                    kanji = cc.front,
+                    reading = cc.reading,
+                    meaningBurmese = cc.back,
+                    exampleSentence = cc.exampleSentence,
+                    exampleMeaningBurmese = cc.exampleMeaning,
+                    isCustom = true
+                )
+            }
+            startStudySession(vocabCards)
+        }
     }
 
     override fun onCleared() {

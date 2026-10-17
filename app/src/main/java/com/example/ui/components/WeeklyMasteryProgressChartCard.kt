@@ -100,7 +100,7 @@ fun WeeklyMasteryProgressChartCard(
     weeklySummary: WeeklyMasteryVsReviewedSummary,
     modifier: Modifier = Modifier
 ) {
-    var selectedChartType by remember { mutableStateOf(WeeklyChartType.GROUPED_BARS) }
+    var selectedChartType by remember { mutableStateOf(WeeklyChartType.TREND_AREA) }
     var selectedDayIndex by remember {
         mutableIntStateOf(
             if (weeklySummary.dailyProgressList.isNotEmpty()) weeklySummary.dailyProgressList.size - 1 else 0
@@ -152,7 +152,7 @@ fun WeeklyMasteryProgressChartCard(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "WEEKLY PROGRESS SUMMARY",
+                            text = "WEEKLY PERFORMANCE & PROGRESS TRENDS",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 11.sp,
                                 letterSpacing = 1.1.sp
@@ -163,7 +163,7 @@ fun WeeklyMasteryProgressChartCard(
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Mastered vs. Reviewed Kanji",
+                        text = "Quiz Performance & Mastery Line Graph",
                         style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

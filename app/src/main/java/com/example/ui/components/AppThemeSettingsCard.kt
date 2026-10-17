@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -64,8 +65,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.AppThemeSettings
 import com.example.ui.theme.IconThemeStyle
+import com.example.ui.theme.ThemeAesthetic
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.ThemePalette
+import com.example.ui.theme.VermilionRed
+import com.example.ui.theme.JapaneseCrimson
+import com.example.ui.theme.washiPaperTexture
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -75,6 +80,7 @@ fun AppThemeSettingsCard(
     onSelectPalette: (ThemePalette) -> Unit,
     onSelectIconStyle: (IconThemeStyle) -> Unit,
     onToggleOledBlack: (Boolean) -> Unit,
+    onSelectAesthetic: (ThemeAesthetic) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -128,6 +134,185 @@ fun AppThemeSettingsCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
+                    }
+                }
+            }
+
+            // ====================================================================
+            // 0. DESIGN AESTHETIC TOGGLE: MATERIAL 3 vs. MODERN JAPANESE MINIMALIST
+            // ====================================================================
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "DESIGN AESTHETIC • ဒီဇိုင်းအသွင်သဏ္ဌာန်",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    val isWashiActive = themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isWashiActive) VermilionRed.copy(alpha = 0.12f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isWashiActive) VermilionRed.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Text(
+                            text = if (isWashiActive) "和紙 • Washi Paper Active" else "M3 • Material Active",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                            color = if (isWashiActive) VermilionRed else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                // Aesthetic Selector Cards
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    ThemeAesthetic.entries.forEach { aesthetic ->
+                        val isSelected = themeSettings.themeAesthetic == aesthetic
+                        val isWashi = aesthetic == ThemeAesthetic.WASHI_MINIMALIST
+
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (isSelected) {
+                                if (isWashi) Color(0xFFFFFBF5) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            },
+                            border = BorderStroke(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) {
+                                    if (isWashi) VermilionRed else MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .clickable { onSelectAesthetic(aesthetic) }
+                                .testTag("theme_aesthetic_toggle_${aesthetic.name.lowercase()}")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                // Aesthetic Badge / Seal
+                                if (isWashi) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = VermilionRed.copy(alpha = 0.14f),
+                                        border = BorderStroke(1.2.dp, VermilionRed.copy(alpha = 0.65f)),
+                                        modifier = Modifier.size(46.dp)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            Text(
+                                                text = "和",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = VermilionRed
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                                        modifier = Modifier.size(46.dp)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Palette,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Aesthetic Description & Labels
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = aesthetic.titleEnglish,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) {
+                                                if (isWashi) VermilionRed else MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            }
+                                        )
+
+                                        if (isWashi) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = VermilionRed.copy(alpha = 0.1f)
+                                            ) {
+                                                Text(
+                                                    text = "朱色 • Washi",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = VermilionRed,
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = aesthetic.titleBurmese,
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(
+                                        text = aesthetic.description,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+
+                                // Selection Radio Icon
+                                Icon(
+                                    imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                    contentDescription = null,
+                                    tint = if (isSelected) {
+                                        if (isWashi) VermilionRed else MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outline
+                                    },
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -381,13 +566,13 @@ fun AppThemeSettingsCard(
                 ) {
                     Column {
                         Text(
-                            text = "Live Theme Active: ${themeSettings.themePalette.titleJapanese}",
+                            text = "Live Theme: ${themeSettings.themeAesthetic.titleEnglish}",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Mode: ${themeSettings.themeMode.titleEnglish} • Style: ${themeSettings.iconThemeStyle.titleEnglish}",
+                            text = "Mode: ${themeSettings.themeMode.titleEnglish} • Accent: ${if (themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST) "Japanese Crimson (朱色)" else themeSettings.themePalette.titleJapanese}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

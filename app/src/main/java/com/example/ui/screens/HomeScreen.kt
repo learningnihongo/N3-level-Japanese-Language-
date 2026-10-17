@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Star
@@ -507,7 +508,7 @@ fun HomeScreen(
             }
         }
 
-        // 2. UNIFIED STUDY MODES (Clean 2x2 Grid - Uncluttered, Accessible & Clear)
+        // 2. UNIFIED STUDY MODES (Clean, Compact Mobile Grid)
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -515,21 +516,11 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        Text(
-                            text = "Study Modes • လေ့လာမှုကဏ္ဍများ",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "学習モード • 4 Essential Study Paths",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = JapaneseFontFamily,
-                                fontSize = 11.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = "လေ့လာမှုကဏ္ဍများ • Study Modes",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
 
                     TextButton(
                         onClick = onOpenAddCustomCard,
@@ -550,129 +541,31 @@ fun HomeScreen(
                     }
                 }
 
-                // Featured JLPT N3 Past Exams Card (မေးခွန်းဟောင်း 2014-2025)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { onNavigateToPastExams() }
-                        .testTag("home_past_exams_banner"),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.5.dp, JapaneseCrimson.copy(alpha = 0.35f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        JapaneseCrimson.copy(alpha = 0.12f),
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.08f)
-                                    )
-                                )
-                            )
-                            .padding(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = JapaneseCrimson,
-                                    modifier = Modifier.size(46.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = "問",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontFamily = JapaneseFontFamily,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 20.sp
-                                            ),
-                                            color = Color.White
-                                        )
-                                    }
-                                }
-
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "မေးခွန်းဟောင်း (Past Exams)",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = JapaneseCrimson.copy(alpha = 0.15f)
-                                        ) {
-                                            Text(
-                                                text = "2014-2025",
-                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
-                                                fontWeight = FontWeight.Bold,
-                                                color = JapaneseCrimson,
-                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = "၁,၃၅၇ စကားလုံး • 漢字 • 語彙 • 3D ကတ်ပြား",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Open Past Exams",
-                                tint = JapaneseCrimson,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
+                // 2x2 Clean Mobile Study Modes Grid
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     StudyModeTile(
+                        title = "မေးခွန်းဟောင်း",
+                        subtitle = "Past Exams (2014-2025)",
+                        badge = "1,357",
+                        icon = Icons.Default.School,
+                        tintColor = JapaneseCrimson,
+                        modifier = Modifier.weight(1f),
+                        testTag = "home_past_exams_banner",
+                        onClick = onNavigateToPastExams
+                    )
+
+                    StudyModeTile(
                         title = "3D Flashcards",
-                        subtitle = "တွဲလုံးပါ ကတ်လှန်",
-                        badge = "3D Flip",
+                        subtitle = "ကတ်လှန်လေ့ကျင့်",
+                        badge = "Flip",
                         icon = Icons.Default.Flip,
                         tintColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f),
                         testTag = "open_flashcard_flip_btn",
                         onClick = onNavigateToFlashcard
-                    )
-
-                    StudyModeTile(
-                        title = "တွဲလုံး လေ့ကျင့်ခန်း",
-                        subtitle = "Collocations (၂၅+)",
-                        badge = "အထူး",
-                        icon = Icons.Default.AutoAwesome,
-                        tintColor = Color(0xFF8E24AA),
-                        modifier = Modifier.weight(1f),
-                        testTag = "open_collocations_mode_btn",
-                        onClick = {
-                            vocabViewModel.startCollocationStudySession { cards ->
-                                onStartStudy(cards)
-                            }
-                        }
                     )
                 }
 
@@ -683,7 +576,7 @@ fun HomeScreen(
                     StudyModeTile(
                         title = "Quiz Arena",
                         subtitle = "ဉာဏ်စမ်းစစ်ဆေး",
-                        badge = "စမ်းသပ်",
+                        badge = "Drill",
                         icon = Icons.Default.Quiz,
                         tintColor = ReviewBlue,
                         modifier = Modifier.weight(1f),
@@ -692,7 +585,7 @@ fun HomeScreen(
                     )
 
                     StudyModeTile(
-                        title = "Kanji Goal (650)",
+                        title = "Kanji Goal",
                         subtitle = "ကန်ဂျီပန်းတိုင်",
                         badge = "$masteredCount/650",
                         icon = Icons.Default.PieChart,
@@ -700,99 +593,6 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                         testTag = "home_kanji_progress_banner",
                         onClick = onNavigateToKanjiProgress
-                    )
-                }
-            }
-        }
-
-        // 2b. D3 / Recharts Progress Dashboard Quick Banner (Mobile responsive)
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .clickable { onNavigateToDashboard() }
-                    .testTag("home_d3_dashboard_banner"),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, JapaneseCrimson.copy(alpha = 0.22f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    JapaneseCrimson.copy(alpha = 0.08f),
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
-                                )
-                            )
-                        )
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = JapaneseCrimson,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.ShowChart,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Progress Dashboard",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = JapaneseCrimson.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "Charts",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        color = JapaneseCrimson,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = "Learned Kanji over time & streak matrix",
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Open Dashboard",
-                        tint = JapaneseCrimson,
-                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -989,192 +789,73 @@ fun HomeScreen(
                                     }
                                 }
 
-                                // Quick Action Pills for Word of the Day
+                                // Quick Action Buttons for Word of the Day (Clean, Compact)
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 4.dp)
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        .padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 3D Flashcard Quick Action
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { onNavigateToFlashcard() }
+                                    FilledTonalButton(
+                                        onClick = { onNavigateToFlashcard() },
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Flip,
-                                                contentDescription = "3D Card",
-                                                tint = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = "3D Flashcard",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onPrimary,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                    // Audio
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { vocabViewModel.speakJapanese(card.kanji) }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                                contentDescription = "Speak",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = "Audio",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.Flip,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("3D Flip", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
 
-                                    // Copy
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable {
-                                                StudyActionHelper.copyToClipboard(
-                                                    context = context,
-                                                    text = "${card.kanji}【${card.reading}】: ${card.meaningBurmese}",
-                                                    label = "Card",
-                                                    toastMessage = "${card.kanji} ကို Copy ကူးပြီးပါပြီ ✓"
-                                                )
-                                            }
+                                    OutlinedButton(
+                                        onClick = { vocabViewModel.speakJapanese(card.kanji) },
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ContentCopy,
-                                                contentDescription = "Copy",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(13.dp)
-                                            )
-                                            Text(
-                                                text = "Copy",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Audio", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
 
-                                    // Google Translate
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable {
-                                                StudyActionHelper.openGoogleTranslate(
-                                                    context = context,
-                                                    text = card.kanji,
-                                                    sourceLang = "ja",
-                                                    targetLang = "my"
-                                                )
-                                            }
+                                    IconButton(
+                                        onClick = {
+                                            StudyActionHelper.copyToClipboard(
+                                                context = context,
+                                                text = "${card.kanji}【${card.reading}】: ${card.meaningBurmese}",
+                                                label = "Card",
+                                                toastMessage = "${card.kanji} ကို Copy ကူးပြီးပါပြီ ✓"
+                                            )
+                                        },
+                                        modifier = Modifier.size(36.dp)
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Translate,
-                                                contentDescription = "Translate",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(13.dp)
-                                            )
-                                            Text(
-                                                text = "Translate",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "Copy",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
-
-                                    // Jisho.org
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = JapaneseCrimson.copy(alpha = 0.12f),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable {
-                                                StudyActionHelper.openJisho(context = context, query = card.kanji)
-                                            }
+                                    IconButton(
+                                        onClick = { vocabViewModel.toggleBookmark(card) },
+                                        modifier = Modifier.size(36.dp)
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.OpenInNew,
-                                                contentDescription = "Jisho",
-                                                tint = JapaneseCrimson,
-                                                modifier = Modifier.size(13.dp)
-                                            )
-                                            Text(
-                                                text = "jisho.org",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = JapaneseCrimson
-                                            )
-                                        }
-                                    }
-
-                                    // Bookmark
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (card.isBookmarked) SakuraPinkDark.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { vocabViewModel.toggleBookmark(card) }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = if (card.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                                contentDescription = "Bookmark",
-                                                tint = if (card.isBookmarked) SakuraPinkDark else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = if (card.isBookmarked) "Saved" else "Save",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (card.isBookmarked) SakuraPinkDark else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = if (card.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                            contentDescription = "Bookmark",
+                                            tint = if (card.isBookmarked) SakuraPinkDark else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 }
                             }

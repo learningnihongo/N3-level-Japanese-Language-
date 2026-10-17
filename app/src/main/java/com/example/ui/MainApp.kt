@@ -61,6 +61,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.components.AddCustomCardDialog
 import com.example.ui.navigation.Screen
+import com.example.ui.screens.CustomCardsScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.FlashcardScreen
 import com.example.ui.screens.FlashcardStudyScreen
@@ -74,6 +75,7 @@ import com.example.ui.screens.StatisticsScreen
 import com.example.ui.screens.VocabBrowseScreen
 import com.example.ui.theme.IconThemeStyle
 import com.example.ui.theme.KanjiKotobaTheme
+import com.example.ui.theme.ThemeAesthetic
 import com.example.ui.theme.ThemeMode
 import com.example.ui.viewmodel.QuizViewModel
 import com.example.ui.viewmodel.VocabFilterType
@@ -112,7 +114,9 @@ fun MainApp(
             Screen.Profile
         )
 
-        val isFullScreenStudy = currentRoute == Screen.Study.route || currentRoute == Screen.QuizHistory.route
+        val isFullScreenStudy = currentRoute == Screen.Study.route ||
+            currentRoute == Screen.QuizHistory.route ||
+            currentRoute == Screen.CustomDecks.route
         val systemIsDark = isSystemInDarkTheme()
         val isCurrentlyDark = when (themeSettings.themeMode) {
             ThemeMode.SYSTEM -> systemIsDark
@@ -200,6 +204,49 @@ fun MainApp(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                // Quick Theme Aesthetic Toggle (Material 3 <-> Modern Japanese Minimalist Washi)
+                                IconButton(
+                                    onClick = {
+                                        val nextAesthetic = if (themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST)
+                                            ThemeAesthetic.MATERIAL3
+                                        else
+                                            ThemeAesthetic.WASHI_MINIMALIST
+                                        vocabViewModel.setThemeAesthetic(nextAesthetic)
+                                    },
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .testTag("quick_aesthetic_toggle_btn")
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST)
+                                            com.example.ui.theme.VermilionRed.copy(alpha = 0.15f)
+                                        else
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST)
+                                                com.example.ui.theme.VermilionRed.copy(alpha = 0.5f)
+                                            else
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                        )
+                                    ) {
+                                        Text(
+                                            text = if (themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST) "和" else "M3",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp
+                                            ),
+                                            color = if (themeSettings.themeAesthetic == ThemeAesthetic.WASHI_MINIMALIST)
+                                                com.example.ui.theme.VermilionRed
+                                            else
+                                                MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
                                 IconButton(
                                     onClick = {
                                         val nextMode = if (isCurrentlyDark) ThemeMode.LIGHT else ThemeMode.DARK
@@ -333,7 +380,7 @@ fun MainApp(
                                 navController.navigate(Screen.Quiz.route)
                             },
                             onOpenAddCustomCard = {
-                                showAddCustomDialog = true
+                                navController.navigate(Screen.CustomDecks.route)
                             },
                             onNavigateToStats = {
                                 navController.navigate(Screen.Stats.route)
@@ -403,6 +450,8 @@ fun MainApp(
 
                     composable(Screen.Quiz.route) {
                         QuizScreen(
+                            quizViewModel = quizViewModel,
+                            vocabViewModel = vocabViewModel,
                             onBackClick = {
                                 navController.popBackStack()
                             },
@@ -428,7 +477,27 @@ fun MainApp(
                     }
 
                     composable(Screen.Profile.route) {
-                        ProfileScreen(vocabViewModel = vocabViewModel)
+                        ProfileScreen(
+                            vocabViewModel = vocabViewModel,
+                            onNavigateToCustomDecks = {
+                                navController.navigate(Screen.CustomDecks.route)
+                            },
+                            onNavigateToQuiz = {
+                                navController.navigate(Screen.Quiz.route)
+                            }
+                        )
+                    }
+
+                    composable(Screen.CustomDecks.route) {
+                        CustomCardsScreen(
+                            vocabViewModel = vocabViewModel,
+                            onBackClick = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToStudy = {
+                                navController.navigate(Screen.Study.route)
+                            }
+                        )
                     }
 
                     composable(Screen.Study.route) {

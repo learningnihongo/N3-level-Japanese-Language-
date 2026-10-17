@@ -300,6 +300,7 @@ class VocabRepository(
 
     // User Profile & Streak
     fun getUserProfile(): Flow<UserProfile?> = userProfileDao.getProfile()
+    suspend fun getUserProfileDirect(): UserProfile? = userProfileDao.getProfile().firstOrNull()
 
     suspend fun updateProfileName(name: String, dailyGoal: Int, targetJlpt: String) {
         val current = userProfileDao.getProfile().firstOrNull() ?: UserProfile(id = 1)

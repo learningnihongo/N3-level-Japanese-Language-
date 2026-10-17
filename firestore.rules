@@ -32,6 +32,11 @@ service cloud.firestore {
              data.totalXp is int && data.totalXp >= 0 &&
              data.currentStreak is int && data.currentStreak >= 0 &&
              (!('bestStreak' in data) || data.bestStreak is int) &&
+             (!('flashcardFrontLang' in data) || (data.flashcardFrontLang is string && data.flashcardFrontLang.size() <= 20)) &&
+             (!('autoPlayTts' in data) || data.autoPlayTts is bool) &&
+             (!('gestureStyle' in data) || (data.gestureStyle is string && data.gestureStyle.size() <= 50)) &&
+             (!('shuffleMode' in data) || (data.shuffleMode is string && data.shuffleMode.size() <= 50)) &&
+             (!('cardsStudiedCount' in data) || data.cardsStudiedCount is int) &&
              data.createdAt is timestamp;
     }
 
@@ -43,6 +48,7 @@ service cloud.firestore {
              data.back is string && data.back.size() > 0 && data.back.size() <= 1000 &&
              (!('cardType' in data) || (data.cardType is string && data.cardType.size() <= 50)) &&
              (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
+             (!('deckName' in data) || (data.deckName is string && data.deckName.size() <= 100)) &&
              (!('exampleSentence' in data) || (data.exampleSentence is string && data.exampleSentence.size() <= 1000)) &&
              (!('exampleMeaning' in data) || (data.exampleMeaning is string && data.exampleMeaning.size() <= 1000)) &&
              (!('masteryLevel' in data) || data.masteryLevel is int) &&

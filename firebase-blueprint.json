@@ -2,7 +2,7 @@
   "entities": {
     "UserProfile": {
       "title": "UserProfile",
-      "description": "User profile with study statistics, streak, and targets",
+      "description": "User profile with study statistics, streak, targets, and personalized flashcard settings",
       "type": "object",
       "properties": {
         "userId": {
@@ -40,6 +40,26 @@
         "bestStreak": {
           "type": "integer",
           "description": "Best consecutive study days streak"
+        },
+        "flashcardFrontLang": {
+          "type": "string",
+          "description": "Preferred front card language (Japanese or Burmese)"
+        },
+        "autoPlayTts": {
+          "type": "boolean",
+          "description": "Auto play pronunciation audio on flip"
+        },
+        "gestureStyle": {
+          "type": "string",
+          "description": "Gesture interaction style"
+        },
+        "shuffleMode": {
+          "type": "string",
+          "description": "Preferred shuffle mode for cards"
+        },
+        "cardsStudiedCount": {
+          "type": "integer",
+          "description": "Total cards reviewed and studied"
         },
         "createdAt": {
           "type": "string",
@@ -88,6 +108,14 @@
         "cardType": {
           "type": "string",
           "description": "Card category (Kanji, Kotoba, Grammar)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Topic category or deck name"
+        },
+        "deckName": {
+          "type": "string",
+          "description": "User custom deck name"
         },
         "exampleSentence": {
           "type": "string",
@@ -172,11 +200,11 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
-      "description": "User profile with study statistics"
+      "description": "User profile with study statistics and settings"
     },
     "/users/{userId}/custom_flashcards/{cardId}": {
       "schema": "CustomFlashcard",
-      "description": "User's custom created flashcards"
+      "description": "User's custom created flashcards and custom decks"
     },
     "/users/{userId}/quiz_histories/{quizId}": {
       "schema": "QuizHistory",

@@ -1,99 +1,99 @@
-# Profile Section Declutter & APK Release
+# Mobile UI Streamlining, Past Exam Gestures Fix, and Quiz Arena Enhancement Plan
 
-Streamline the Profile screen by eliminating visual clutter and redundant charts while retaining essential user personalization, audio preferences, and achievements, followed by compiling an installable release APK.
-
-### User Review & Critical Decisions
-
-> [!IMPORTANT]
-> Based on your confirmed choices in Phase 1:
-> - **Profile Features**: Keep essential settings, audio controls, and achievements in a clean, uncluttered layout without overwhelming chart duplicates.
-> - **APK Release**: Build a direct-installation APK signed with the debug keystore so it can be sideloaded immediately on Android devices without keystore configuration errors.
-
-- **Confirmed Decision 1**: Retain the user identity header (name, avatar, level progress), quick metric strip, and the two clean tabs ("Settings & Audio" and "Badges & Progress").
-- **Confirmed Decision 2**: Remove the bulky and redundant weekly mastery chart from the Profile achievements tab, allowing the trophy showcase and badges to shine without scrolling clutter.
-- **Confirmed Decision 3**: Assemble and export an installable `.apk` file ready for device testing and installation.
+A comprehensive overhaul focusing on mobile-first ergonomics, decluttering verbose text across Home, Stats, and Profile screens, fixing gesture recognition in Past Exam flashcards, and upgrading the Quiz Arena with instant feedback and clean scorecards.
 
 ---
 
-### 1. Overview & Core Concept
+## 1. User Feedback & Confirmed Requirements
 
-- **What It Does**: Transforms the Profile screen into a calm, focused management hub. Users can personalize their study goals and avatar, adjust Japanese text-to-speech audio speed/pitch, configure daily study reminders, customize app appearance (Dark/Light/AMOLED mode & color palette), and inspect their unlocked JLPT N3 trophy badges.
-- **Target Audience / Persona**: Burmese learners studying JLPT N3 vocabulary who want quick, effortless access to learning preferences and achievement milestones without dense visual noise.
-- **Key Value**: Clean, uncluttered Zen aesthetic that respects user attention, making audio tuning, study reminder toggles, and badge inspection immediate and intuitive.
-
----
-
-### 2. User Experience & Visual Design
-
-- **Key User Flows**:
-  1. *Profile Overview*: User navigates to the Profile tab. They see a clean header with their chosen avatar, JLPT target level (N3), daily goal (words/day), level badge, and a slim 4-metric ribbon (Quiz Streak, Mastered, Due Review, Total Words).
-  2. *Settings & Audio Tab*: Access to high-utility controls:
-     - Daily study reminder scheduler with exact time picker.
-     - Japanese TTS voice settings with speech rate slider, pitch slider, and "Test Voice" button.
-     - Visual theme selector (Dark mode, AMOLED black, theme palette).
-     - Lightweight offline status indicator confirming 100% offline database readiness.
-  3. *Badges & Achievements Tab*: Clean showcase of unlocked and locked trophies (Kanji Master, Speed Demon, Streak Titan, etc.) with touch dialogs explaining how to earn each badge.
-  4. *Profile Editing*: Simple dialog to update nickname, target daily goal, and avatar (preset or photo picker).
-
-- **Visual Identity & Theme**:
-  - *Aesthetic Direction*: Japanese Zen & Modern Material 3 minimalism.
-  - *Palette*: Off-white / dark background, Japanese Crimson (`#BC002D`) and Indigo accents, Mastered Green for achievements, Streak Orange for fire streaks.
-  - *Typography*: Bold M3 typography with Japanese character touches and clean Burmese bilingual captions.
-  - *Layout Density*: Spacious 8.dp/16.dp grid rhythm, eliminating multi-nested cards and extra chart layers.
+1. **Mobile Layout Density (Home, Stats, Profile)**:
+   - Streamlined, clean mobile cards with focused essential KPIs and compact, readable Burmese/Japanese typography.
+   - Eliminate redundant multi-line explanations, duplicate chart panels, and dense text clutter that degrades phone usability.
+2. **Past Exam Flashcard Gestures**:
+   - Fix gestures to provide responsive **horizontal swipe** for navigating between next and previous cards, combined with **tap to flip** the flashcard front/back.
+3. **Quiz Arena Enhancement**:
+   - Streamlined mobile quiz interface with **instant visual feedback** upon selecting an option (highlighting correct/incorrect states immediately), smooth question transitions, and a clean, motivating post-quiz scorecard.
+4. **Home Section Cleanliness**:
+   - Minimalist, distraction-free Home dashboard focusing on immediate study actions (Due Review, Past Exams, Daily Word) without UI-cluttering paragraph text.
 
 ---
 
-### 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1: Elimination of `WeeklyMasteryProgressChartCard` in Profile**
-  - *Chosen Approach*: Remove the duplicate weekly review chart from the Profile section.
-  - *Why*: The dedicated Stats screen already provides deep, comprehensive analytics (Donut mastery, daily bar charts, category radar, and quiz accuracy). Repeating a heavy interactive chart inside the Profile tab creates visual clutter and slows rendering.
-  - *Alternative Considered*: Keeping a mini-chart. Rejected because the user specifically requested removing unnecessary clutter and keeping only useful features.
-
-- **Decision 2: Direct Installable APK Build Target**
-  - *Chosen Approach*: Execute `gradle :app:assembleDebug` and place the generated APK in an easily accessible location.
-  - *Why*: Standard Android release builds without an uploaded cloud keystore fail with signing errors. Using the debug-signed configuration produces a fully functional, production-ready binary that installs instantly on physical Android devices.
-
----
-
-### 4. Technical Architecture & Data Strategy
+## 2. Proposed Architecture & Component Changes
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        ProfileScreen.kt                                │
-├────────────────────────────────────────────────────────────────────────┤
-│  1. ProfileHeaderCard                                                  │
-│     - Avatar (AsyncImage / Preset) + Edit Profile Dialog               │
-│     - Name, JLPT Level (N3), Words/Day Goal                            │
-│     - XP & Level Progress Bar (Level 1..N)                             │
-│     - QuizStreakHeaderBadge                                            │
-├────────────────────────────────────────────────────────────────────────┤
-│  2. MetricRibbonItem Strip                                             │
-│     - Streak (d) │ Mastered (count) │ Due (count) │ Total Words        │
-├────────────────────────────────────────────────────────────────────────┤
-│  3. Segmented Tab Selector                                             │
-│     [ Settings & Audio ]                 [ Badges & Achievements ]     │
-├────────────────────────────────────────────────────────────────────────┤
-│  Tab 0: Settings & Audio            │  Tab 1: Badges & Achievements    │
-│  - DailyReminderSettingsCard        │  - TrophyShowcaseCard (Badges)   │
-│  - VoiceSettingsCard (TTS engine)   │  - BadgeDetailDialog             │
-│  - AppThemeSettingsCard (M3 themes) │                                  │
-│  - Offline Ready Status             │                                  │
-└─────────────────────────────────────┴──────────────────────────────────┘
+│                          Mobile Polish Plan                            │
+├──────────────────┬──────────────────┬──────────────────┬───────────────┤
+│  Home Screen     │  Stats Screen    │  Profile Screen  │  Past Exams   │
+│  - Clean Hero    │  - Essential KPI │  - Minimal Card  │  - Fixed Drag │
+│  - 4 Mode Tiles  │  - Mastery Bar   │  - Clean Ribbon  │  - Tap to Flip│
+│  - Focused Word  │  - Unified Chart │  - Concise Text  │  - Smooth Nav │
+└──────────────────┴──────────────────┴──────────────────┴───────────────┘
                                    │
                                    ▼
-                      Gradle Build & Release Stage
-          :app:assembleDebug -> app-debug.apk -> /apk/kanjikotoba-v1.0.apk
+                       ┌───────────────────────┐
+                       │   Quiz Arena Screen   │
+                       │   - Dynamic Deck      │
+                       │   - Instant Feedback  │
+                       │   - Clean Scorecard   │
+                       └───────────────────────┘
 ```
 
-- **Interactive State Handlers**:
-  - `vocabViewModel.updateProfile(...)`: Persists user name, daily word goal, target JLPT level, and avatar URI.
-  - `vocabViewModel.setVoiceSpeechRate(...)` / `setVoicePitch(...)`: Dynamically updates Android TTS playback parameters.
-  - `vocabViewModel.setReminderEnabled(...)` / `setReminderTime(...)`: Schedules WorkManager daily alarms.
-  - `vocabViewModel.setThemeMode(...)`: Toggles dark/light/system theme dynamically.
+### Component 1: Fix Past Exam Flashcards Gesture Handling (`PastExamFlashcardView.kt`)
+- **Current Issue**: Card `Box` chains `.then(dragModifier).then(tapModifier)` which causes pointer event cancellation between `detectHorizontalDragGestures` and `detectTapGestures`, while parent `verticalScroll` competes for drag gestures.
+- **Solution**:
+  - Implement unified horizontal dragging with `Modifier.draggable` (or unified `pointerInput` with drag threshold) so horizontal swipes cleanly trigger `nextCard()` / `prevCard()` with spring offset reset.
+  - Pair with `clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { isFlipped = !isFlipped }` ensuring reliable tap-to-flip functionality.
+  - Set default gesture mode to **Slide Carousel (Next/Prev swipe)** with clear, non-intrusive gesture hints.
 
-- **Verification & Release Execution**:
-  1. Update `ProfileScreen.kt` to remove the redundant chart and streamline the layout.
-  2. Verify build compilation via `compile_applet`.
-  3. Run Gradle task `:app:assembleDebug` to generate the APK package.
-  4. Copy and verify APK existence and file size in the project output directory.
+### Component 2: Declutter & Streamline Home Screen (`HomeScreen.kt`)
+- **Current Issue**: Excessive stacked cards (Hero greeting, SRS ring, goal tuner, 4 study modes, Bento cards, past exams banner, D3 dashboard banner, word of the day, proverb, collocations, 100 lessons, categories) with dense subtitles.
+- **Solution**:
+  - **Hero Learning Card**: Keep the hanko seal and concise greeting, sleek streak pill, and single prominent "Start Daily Study" CTA.
+  - **Quick Study Modes Grid**: 4 clean, compact tiles (Past Exams, 3D Flashcards, Collocations, Kanji Goal) with single-line labels and clear icons.
+  - **Focused Daily Card**: Clean word presentation (Kanji, Furigana, concise Burmese meaning) without paragraph clutter.
+  - Clean spacing conforming to 8.dp mobile grid.
+
+### Component 3: Declutter & Focus Statistics Screen (`StatisticsScreen.kt`)
+- **Current Issue**: Stacks 5 heavy cards with duplicate visualizations (Hero banner, tab switcher, Donut chart, Daily bar chart, Visual summary dashboard with radar and stacked bars, Quiz accuracy curve).
+- **Solution**:
+  - **Sleek Metric Grid**: 4 essential metrics (Mastered, Accuracy %, Streak, Due Review) in a compact, scannable ribbon.
+  - **Mastery Progress Card**: Clean progress bar and 3 simple counts (Mastered, Reviewing, Learning).
+  - **Unified Activity & Accuracy Chart**: Keep the primary interactive weekly performance chart and remove the redundant multi-layer radar/stacked category dump.
+  - Direct quick action to jump into Due Review or Quiz History.
+
+### Component 4: Streamline Profile Screen (`ProfileScreen.kt`)
+- **Current Issue**: Bulky multi-paragraph cards, heavy offline storage description, and dense subtitles.
+- **Solution**:
+  - **Student Header**: Compact avatar, Level, XP bar, and Target JLPT badge.
+  - **Sleek Stats Ribbon**: 4 clean pills for Streak, Mastered, Due, and Total.
+  - **Concise Settings Card**: Clean toggles for Theme Mode, Aesthetic (Material 3 vs Washi Minimalist), and Audio settings without paragraphs of explanatory text.
+  - Remove redundant 100% offline storage text card.
+
+### Component 5: Elevate Quiz Arena (`QuizScreen.kt`)
+- **Current Issue**: Hardcoded to only 10 fixed questions from SeedData, no interactive feedback on tap, and basic scorecard.
+- **Solution**:
+  - **Dynamic Question Pool**: Generate questions from full active vocabulary (Kanji, Reading, Burmese translation).
+  - **Instant Feedback**: When the user taps an option:
+    - Instantly lock options to prevent double-tap.
+    - Highlight selected choice in green (if correct) or red (if wrong).
+    - If wrong, simultaneously highlight the correct answer in green with a subtle checkmark.
+    - Auto-advance to the next question with a smooth transition (or Continue button).
+  - **Clean Scorecard**:
+    - Circular score percentage badge with celebratory icon.
+    - Stats breakdown: Total Questions, Correct, Accuracy %, and XP earned.
+    - Quick actions: "Retake Quiz" and "Back to Study".
+
+---
+
+## 3. Verification & Testing Plan
+
+1. **Compilation Check**:
+   - Run `compile_applet` to ensure zero compilation or syntax errors.
+2. **Gesture Verification**:
+   - Verify that horizontal swipe moves between previous and next cards in `PastExamFlashcardView`.
+   - Verify that tap reliably flips the flashcard between question and answer.
+3. **Mobile Layout Verification**:
+   - Verify that Home, Stats, and Profile screens fit comfortably on phone aspect ratios without text overflow or vertical clutter.
+4. **Quiz Flow Verification**:
+   - Verify quiz questions load dynamically, option selection provides instant feedback, and the finish screen displays the clean scorecard.

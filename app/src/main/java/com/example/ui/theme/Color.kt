@@ -47,6 +47,22 @@ val PolishOutlineVariant = Color(0xFFCBD5E1)
 val ElectricIndigo = Color(0xFF4F46E5)
 val ElectricIndigoDark = Color(0xFF818CF8)
 
+// Modern Japanese Minimalist Washi Colors & Crimson Accents
+val WashiPaperLight = Color(0xFFFAF7F2)
+val WashiPaperCardLight = Color(0xFFFFFDF9)
+val WashiPaperSurfaceVariantLight = Color(0xFFF2ECE1)
+val WashiPaperDark = Color(0xFF171513)
+val WashiPaperCardDark = Color(0xFF23201D)
+val WashiPaperSurfaceVariantDark = Color(0xFF2D2925)
+val SumiInkLine = Color(0xFF2B2622)
+val SumiInkSoft = Color(0xFF5E564D)
+val WashiBorderLight = Color(0xFFE2DCD0)
+val WashiBorderDark = Color(0xFF3D3730)
+val VermilionRed = Color(0xFFC92A2A)
+val CrimsonAccentDark = Color(0xFFFF6B6B)
+val WashiFiberLight = Color(0xFF9E9282)
+val WashiFiberDark = Color(0xFF4E473E)
+
 // SRS Status Helper Colors
 fun getSrsAgainBg(isDark: Boolean): Color = if (isDark) Color(0xFF450A0A) else Color(0xFFFEE2E2)
 fun getSrsAgainText(isDark: Boolean): Color = if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)

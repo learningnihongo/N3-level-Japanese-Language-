@@ -10,6 +10,7 @@ import com.example.data.model.FirestoreUserProfile
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -28,6 +29,11 @@ class FirestoreSyncRepository(
         private const val KEY_LOCAL_CARDS = "local_custom_cards"
         private const val KEY_LOCAL_XP = "local_total_xp"
         private const val KEY_LOCAL_STREAK = "local_current_streak"
+        private const val KEY_LOCAL_FRONT_LANG = "local_front_lang"
+        private const val KEY_LOCAL_TTS = "local_auto_play_tts"
+        private const val KEY_LOCAL_GESTURE = "local_gesture_style"
+        private const val KEY_LOCAL_SHUFFLE = "local_shuffle_mode"
+        private const val KEY_LOCAL_STUDIED_COUNT = "local_studied_count"
 
         fun create(context: Context): FirestoreSyncRepository {
             val databaseId = context.getString(R.string.firestore_database_id)
@@ -53,6 +59,7 @@ class FirestoreSyncRepository(
                         back = obj.optString("back", ""),
                         cardType = obj.optString("cardType", "Kotoba"),
                         category = obj.optString("category", "Custom"),
+                        deckName = obj.optString("deckName", "General"),
                         exampleSentence = obj.optString("exampleSentence", ""),
                         exampleMeaning = obj.optString("exampleMeaning", ""),
                         masteryLevel = obj.optLong("masteryLevel", 0L)
@@ -73,8 +80,12 @@ class FirestoreSyncRepository(
         } else {
             current.add(0, card)
         }
+        saveAllLocalCards(current)
+    }
+
+    fun saveAllLocalCards(cards: List<CustomFlashcard>) {
         val jsonArray = JSONArray()
-        for (item in current) {
+        for (item in cards) {
             val obj = JSONObject()
             obj.put("id", item.id)
             obj.put("userId", item.userId)
@@ -83,6 +94,7 @@ class FirestoreSyncRepository(
             obj.put("back", item.back)
             obj.put("cardType", item.cardType)
             obj.put("category", item.category)
+            obj.put("deckName", item.deckName)
             obj.put("exampleSentence", item.exampleSentence)
             obj.put("exampleMeaning", item.exampleMeaning)
             obj.put("masteryLevel", item.masteryLevel)
@@ -93,32 +105,28 @@ class FirestoreSyncRepository(
 
     fun deleteLocalCustomCard(cardId: String) {
         val current = getLocalCustomCards().filter { it.id != cardId }
-        val jsonArray = JSONArray()
-        for (item in current) {
-            val obj = JSONObject()
-            obj.put("id", item.id)
-            obj.put("userId", item.userId)
-            obj.put("front", item.front)
-            obj.put("reading", item.reading)
-            obj.put("back", item.back)
-            obj.put("cardType", item.cardType)
-            obj.put("category", item.category)
-            obj.put("exampleSentence", item.exampleSentence)
-            obj.put("exampleMeaning", item.exampleMeaning)
-            obj.put("masteryLevel", item.masteryLevel)
-            jsonArray.put(obj)
-        }
-        prefs.edit().putString(KEY_LOCAL_CARDS, jsonArray.toString()).apply()
+        saveAllLocalCards(current)
     }
 
     fun getLocalUserProfile(): FirestoreUserProfile {
         val xp = prefs.getLong(KEY_LOCAL_XP, 120L)
         val streak = prefs.getLong(KEY_LOCAL_STREAK, 1L)
+        val frontLang = prefs.getString(KEY_LOCAL_FRONT_LANG, "Japanese") ?: "Japanese"
+        val tts = prefs.getBoolean(KEY_LOCAL_TTS, false)
+        val gesture = prefs.getString(KEY_LOCAL_GESTURE, "SWIPE_REVIEW") ?: "SWIPE_REVIEW"
+        val shuffle = prefs.getString(KEY_LOCAL_SHUFFLE, "DEFAULT") ?: "DEFAULT"
+        val studiedCount = prefs.getLong(KEY_LOCAL_STUDIED_COUNT, 0L)
+
         return FirestoreUserProfile(
             userId = "local_user",
             displayName = "Learner",
             totalXp = xp,
-            currentStreak = streak
+            currentStreak = streak,
+            flashcardFrontLang = frontLang,
+            autoPlayTts = tts,
+            gestureStyle = gesture,
+            shuffleMode = shuffle,
+            cardsStudiedCount = studiedCount
         )
     }
 
@@ -126,17 +134,21 @@ class FirestoreSyncRepository(
         prefs.edit()
             .putLong(KEY_LOCAL_XP, profile.totalXp)
             .putLong(KEY_LOCAL_STREAK, profile.currentStreak)
+            .putString(KEY_LOCAL_FRONT_LANG, profile.flashcardFrontLang)
+            .putBoolean(KEY_LOCAL_TTS, profile.autoPlayTts)
+            .putString(KEY_LOCAL_GESTURE, profile.gestureStyle)
+            .putString(KEY_LOCAL_SHUFFLE, profile.shuffleMode)
+            .putLong(KEY_LOCAL_STUDIED_COUNT, profile.cardsStudiedCount)
             .apply()
     }
 
     // Combined Cloud + Local Observation for Custom Flashcards
     fun observeCustomFlashcards(userId: String?): Flow<List<CustomFlashcard>> = callbackFlow {
-        // First emit local cards immediately so user NEVER sees empty screen
+        // Emit local cards immediately so screen never appears empty
         val localList = getLocalCustomCards()
         trySend(localList)
 
         if (userId.isNullOrEmpty()) {
-            // Unauthenticated: Keep emitting local storage
             awaitClose { }
             return@callbackFlow
         }
@@ -152,17 +164,22 @@ class FirestoreSyncRepository(
             if (snapshot != null) {
                 val cloudCards = snapshot.toObjects(CustomFlashcard::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
                 val currentLocal = getLocalCustomCards()
-                // Merge cloud and local cards by id
                 val combinedMap = mutableMapOf<String, CustomFlashcard>()
                 currentLocal.forEach { combinedMap[it.id] = it }
                 cloudCards.forEach { combinedMap[it.id] = it }
-                trySend(combinedMap.values.toList())
+                val merged = combinedMap.values.toList()
+                saveAllLocalCards(merged)
+                trySend(merged)
             } else {
                 trySend(getLocalCustomCards())
             }
         }
         awaitClose { registration.remove() }
     }
+
+    fun getCustomCardsFlow(userId: String?): Flow<List<CustomFlashcard>> = observeCustomFlashcards(userId)
+    fun getUserProfileFlow(userId: String?): Flow<FirestoreUserProfile?> = observeUserProfile(userId)
+    fun getQuizHistoriesFlow(userId: String?): Flow<List<FirestoreQuizHistory>> = observeQuizHistories(userId)
 
     suspend fun saveCustomFlashcard(card: CustomFlashcard): Result<Unit> {
         // 1. Save to local storage first (instant durability)
@@ -182,6 +199,7 @@ class FirestoreSyncRepository(
                     "back" to card.back,
                     "cardType" to card.cardType,
                     "category" to card.category,
+                    "deckName" to card.deckName,
                     "exampleSentence" to card.exampleSentence,
                     "exampleMeaning" to card.exampleMeaning,
                     "masteryLevel" to card.masteryLevel
@@ -200,6 +218,17 @@ class FirestoreSyncRepository(
         return Result.success(Unit)
     }
 
+    suspend fun saveCustomCard(userId: String, card: CustomFlashcard): Result<Unit> {
+        return saveCustomFlashcard(card.copy(userId = userId))
+    }
+
+    suspend fun saveBulkCustomCards(userId: String, cards: List<CustomFlashcard>): Result<Unit> {
+        for (card in cards) {
+            saveCustomFlashcard(card.copy(userId = userId))
+        }
+        return Result.success(Unit)
+    }
+
     suspend fun deleteCustomFlashcard(userId: String, cardId: String): Result<Unit> {
         deleteLocalCustomCard(cardId)
         if (userId.isNotEmpty() && userId != "local" && userId != "local_user") {
@@ -210,6 +239,10 @@ class FirestoreSyncRepository(
             }
         }
         return Result.success(Unit)
+    }
+
+    suspend fun deleteCustomCard(userId: String, cardId: String): Result<Unit> {
+        return deleteCustomFlashcard(userId, cardId)
     }
 
     fun observeUserProfile(userId: String?): Flow<FirestoreUserProfile?> = callbackFlow {
@@ -253,7 +286,12 @@ class FirestoreSyncRepository(
                     "dailyGoal" to profile.dailyGoal,
                     "totalXp" to profile.totalXp,
                     "currentStreak" to profile.currentStreak,
-                    "bestStreak" to profile.bestStreak
+                    "bestStreak" to profile.bestStreak,
+                    "flashcardFrontLang" to profile.flashcardFrontLang,
+                    "autoPlayTts" to profile.autoPlayTts,
+                    "gestureStyle" to profile.gestureStyle,
+                    "shuffleMode" to profile.shuffleMode,
+                    "cardsStudiedCount" to profile.cardsStudiedCount
                 )
                 profile.email?.let { data["email"] = it }
                 profile.avatarUrl?.let { data["avatarUrl"] = it }
@@ -270,6 +308,71 @@ class FirestoreSyncRepository(
             }
         }
         return Result.success(Unit)
+    }
+
+    suspend fun updateProfileStats(userId: String, xp: Long, streak: Long): Result<Unit> {
+        val current = getLocalUserProfile()
+        val updated = current.copy(
+            userId = userId,
+            totalXp = xp,
+            currentStreak = streak,
+            bestStreak = maxOf(current.bestStreak, streak)
+        )
+        return saveOrUpdateProfile(updated)
+    }
+
+    suspend fun updateFlashcardPreferences(
+        userId: String,
+        frontLang: String,
+        autoPlayTts: Boolean,
+        gestureStyle: String,
+        shuffleMode: String
+    ): Result<Unit> {
+        val current = getLocalUserProfile()
+        val updated = current.copy(
+            userId = if (userId.isNotEmpty()) userId else current.userId,
+            flashcardFrontLang = frontLang,
+            autoPlayTts = autoPlayTts,
+            gestureStyle = gestureStyle,
+            shuffleMode = shuffleMode
+        )
+        return saveOrUpdateProfile(updated)
+    }
+
+    suspend fun incrementCardsStudied(userId: String, count: Long = 1L): Result<Unit> {
+        val current = getLocalUserProfile()
+        val updated = current.copy(
+            userId = if (userId.isNotEmpty()) userId else current.userId,
+            cardsStudiedCount = current.cardsStudiedCount + count
+        )
+        return saveOrUpdateProfile(updated)
+    }
+
+    fun observeQuizHistories(userId: String?): Flow<List<FirestoreQuizHistory>> = callbackFlow {
+        if (userId.isNullOrEmpty()) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val colRef = db.collection("users").document(userId).collection("quiz_histories")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(30)
+
+        val registration = colRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.w(TAG, "Error observing quiz histories: ${error.message}")
+                trySend(emptyList())
+                return@addSnapshotListener
+            }
+            if (snapshot != null) {
+                val list = snapshot.toObjects(FirestoreQuizHistory::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                trySend(list)
+            } else {
+                trySend(emptyList())
+            }
+        }
+        awaitClose { registration.remove() }
     }
 
     suspend fun recordQuizHistory(history: FirestoreQuizHistory): Result<Unit> {

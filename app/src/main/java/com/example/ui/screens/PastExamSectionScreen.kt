@@ -70,6 +70,9 @@ import com.example.data.model.VocabCard
 import com.example.ui.components.PastExamFlashcardView
 import com.example.ui.theme.JapaneseCrimson
 import com.example.ui.theme.JapaneseFontFamily
+import com.example.ui.theme.WashiPaperLight
+import com.example.ui.theme.WashiPaperCardLight
+import com.example.ui.theme.VermilionRed
 import com.example.ui.viewmodel.VocabViewModel
 
 enum class PastExamTab(val title: String, val subtitle: String) {
@@ -102,29 +105,32 @@ fun PastExamSectionScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = WashiPaperLight,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "မေးခွန်းဟောင်း (Past Exams)",
+                                text = "မေးခွန်းဟောင်း",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = JapaneseCrimson.copy(alpha = 0.15f)
+                                shape = RoundedCornerShape(8.dp),
+                                color = JapaneseCrimson,
+                                border = BorderStroke(1.dp, VermilionRed)
                             ) {
                                 Text(
-                                    text = "2014-2025",
+                                    text = "2014-2025 • 過去問",
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                     fontWeight = FontWeight.Bold,
-                                    color = JapaneseCrimson,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
                                 )
                             }
                         }
@@ -144,7 +150,8 @@ fun PastExamSectionScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate Back"
+                            contentDescription = "Navigate Back",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -159,12 +166,12 @@ fun PastExamSectionScreen(
                         Icon(
                             imageVector = Icons.Default.Quiz,
                             contentDescription = "Start Past Exam Quiz",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = JapaneseCrimson
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = WashiPaperLight
                 )
             )
         }
@@ -174,27 +181,37 @@ fun PastExamSectionScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Tab Row: Kotoba, Kanji, Flashcards
+            // Japanese Minimalist Tab Row
             TabRow(
                 selectedTabIndex = selectedTab.ordinal,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                containerColor = WashiPaperLight,
+                contentColor = JapaneseCrimson,
+                divider = {
+                    androidx.compose.material3.HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                        thickness = 1.dp
+                    )
+                }
             ) {
                 PastExamTab.entries.forEach { tab ->
                     Tab(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
                         text = {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
                                 Text(
                                     text = tab.title,
                                     fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 12.sp
+                                    fontSize = 12.sp,
+                                    color = if (selectedTab == tab) JapaneseCrimson else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = tab.subtitle,
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
-                                    color = if (selectedTab == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                    color = if (selectedTab == tab) JapaneseCrimson else MaterialTheme.colorScheme.outline
                                 )
                             }
                         },

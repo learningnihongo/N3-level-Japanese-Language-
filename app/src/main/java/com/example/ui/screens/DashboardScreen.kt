@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.WorkspacePremium
 import com.example.ui.components.SrsScheduleTrackingSheet
+import com.example.ui.components.WeeklyMasteryProgressChartCard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -132,6 +133,7 @@ fun DashboardScreen(
 ) {
     val dashboardSummary by vocabViewModel.kanjiProgressDashboardSummary.collectAsState()
     val allCards by vocabViewModel.allCards.collectAsState()
+    val weeklySummary by vocabViewModel.weeklyMasteryVsReviewedStats.collectAsState()
 
     var activeMetricSeries by remember { mutableStateOf(ChartMetricSeries.CUMULATIVE) }
     var selectedPointIndex by remember { mutableIntStateOf(-1) }
@@ -381,6 +383,16 @@ fun DashboardScreen(
                         }
                     }
                 }
+            }
+
+            // ====================================================================
+            // 2.5 WEEKLY QUIZ PERFORMANCE & PROGRESS TRENDS (RECHARTS LINE GRAPH)
+            // ====================================================================
+            item {
+                WeeklyMasteryProgressChartCard(
+                    weeklySummary = weeklySummary,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             // ====================================================================

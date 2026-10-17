@@ -53,6 +53,9 @@ import com.example.ui.theme.JapaneseFontFamily
 import com.example.ui.theme.MasteredGreen
 import com.example.ui.theme.ReviewBlue
 import com.example.ui.theme.WeakOrange
+import com.example.ui.theme.WashiPaperCardLight
+import com.example.ui.theme.WashiBorderLight
+import com.example.ui.theme.VermilionRed
 import kotlin.math.abs
 
 /**
@@ -87,8 +90,8 @@ fun PastExamCardFront(
     val surfaceGradientBrush = Brush.verticalGradient(
         colors = listOf(
             MaterialTheme.colorScheme.surface,
-            dynamicBorderColor.copy(alpha = 0.05f),
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            WashiPaperCardLight.copy(alpha = 0.85f),
+            dynamicBorderColor.copy(alpha = 0.04f)
         )
     )
 
@@ -98,14 +101,14 @@ fun PastExamCardFront(
             .testTag("past_exam_card_front"),
         shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         border = BorderStroke(2.dp, dynamicBorderColor)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(surfaceGradientBrush)
-                .padding(20.dp)
+                .padding(22.dp)
         ) {
             // Top Header: Exam Tag + Mastery Badge + Bookmark & Speaker
             Row(
@@ -360,6 +363,7 @@ fun PastExamCardBack(
     onToggleBookmark: () -> Unit,
     dragOffsetX: Float = 0f,
     dragOffsetY: Float = 0f,
+    flipVertically: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val dynamicBorderColor by animateColorAsState(
@@ -376,11 +380,17 @@ fun PastExamCardBack(
     Card(
         modifier = modifier
             .fillMaxSize()
-            .graphicsLayer { rotationY = 180f }
+            .graphicsLayer {
+                if (flipVertically) {
+                    rotationX = 180f
+                } else {
+                    rotationY = 180f
+                }
+            }
             .testTag("past_exam_card_back"),
         shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         border = BorderStroke(2.dp, dynamicBorderColor)
     ) {
         Box(
@@ -389,13 +399,13 @@ fun PastExamCardBack(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f),
                             MaterialTheme.colorScheme.surface,
-                            dynamicBorderColor.copy(alpha = 0.06f)
+                            WashiPaperCardLight.copy(alpha = 0.88f),
+                            dynamicBorderColor.copy(alpha = 0.05f)
                         )
                     )
                 )
-                .padding(20.dp)
+                .padding(22.dp)
         ) {
             // Top Header: Answer Badge + Bookmark + Audio
             Row(
