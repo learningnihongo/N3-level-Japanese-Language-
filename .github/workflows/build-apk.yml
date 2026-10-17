@@ -1,92 +1,219 @@
-name: Build Android APK & GitHub Release
+name: Build and Release Android APK
 
 on:
   push:
-    branches: [ "**" ]
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
-      - '*'
+      - '[0-9]+.*'
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: 'Release Tag (leave blank to auto-tag e.g. v1.0.X)'
+        required: false
+        type: string
+        default: ''
+      release_title:
+        description: 'Release Title (leave blank for default)'
+        required: false
+        type: string
+        default: ''
       create_release:
-        description: 'Create a GitHub Release with APK'
+        description: 'Publish GitHub Release'
         required: false
         type: boolean
         default: true
-      release_tag:
-        description: 'Release Tag Name (e.g. v1.0.0)'
+      is_draft:
+        description: 'Create Draft Release'
         required: false
-        type: string
-        default: 'v1.0.0'
+        type: boolean
+        default: false
+      is_prerelease:
+        description: 'Mark as Pre-release'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build & Release JLPT N3 APK
+  build-and-release:
+    name: Build & Release Android APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
-      - name: Restore Debug Keystore
+      - name: Setup Keystore
         run: |
           if [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-          else
+            echo "Decoding debug.keystore from base64..."
+            base64 -d debug.keystore.base64 > debug.keystore 2>/dev/null || base64 --decode debug.keystore.base64 > debug.keystore
+          fi
+          if [ ! -f debug.keystore ] || [ ! -s debug.keystore ]; then
+            echo "Generating fallback debug.keystore..."
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
+          ls -la debug.keystore
 
-      - name: Prepare Environment
+      - name: Prepare Secrets & Environment
         run: |
           touch .env
           if [ -f .env.example ]; then
             cp .env.example .env
           fi
 
-      - name: Build APK
-        run: gradle assembleDebug --no-daemon
+      - name: Determine Version and Tag
+        id: determine_version
+        run: |
+          # Read base version name from app/build.gradle.kts
+          BASE_VERSION=$(grep -oE 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n1 | cut -d'"' -f2)
+          if [ -z "$BASE_VERSION" ]; then
+            BASE_VERSION="1.0"
+          fi
+          echo "Base Version from Gradle: $BASE_VERSION"
 
-      - name: Prepare APK File
+          SHOULD_RELEASE="false"
+          SHOULD_TAG="false"
+
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Event: Tag Push
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            SHOULD_RELEASE="true"
+            SHOULD_TAG="false"
+            echo "Event: Tag Push -> $TAG_NAME"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Event: Manual Trigger
+            if [ -n "${{ inputs.release_tag }}" ]; then
+              TAG_NAME="${{ inputs.release_tag }}"
+            else
+              TAG_NAME="v${BASE_VERSION}.${{ github.run_number }}"
+            fi
+            if [ "${{ inputs.create_release }}" == "true" ]; then
+              SHOULD_RELEASE="true"
+              SHOULD_TAG="true"
+            fi
+            echo "Event: Workflow Dispatch -> $TAG_NAME (Release: ${{ inputs.create_release }})"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
+            # Event: Push to main/master branch -> Auto Tag New Version & Release
+            TAG_NAME="v${BASE_VERSION}.${{ github.run_number }}"
+            SHOULD_RELEASE="true"
+            SHOULD_TAG="true"
+            echo "Event: Push to main/master -> Auto-tagging new version $TAG_NAME"
+          else
+            # Other branch pushes: Build only, don't tag or release
+            TAG_NAME="v${BASE_VERSION}-build.${{ github.run_number }}"
+            SHOULD_RELEASE="false"
+            SHOULD_TAG="false"
+            echo "Event: Other branch push -> $TAG_NAME (No release)"
+          fi
+
+          if [ -n "${{ inputs.release_title }}" ]; then
+            RELEASE_TITLE="${{ inputs.release_title }}"
+          else
+            RELEASE_TITLE="KanjiKotoba JLPT N3 Sensei ${TAG_NAME}"
+          fi
+
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
+          echo "SHOULD_RELEASE=$SHOULD_RELEASE" >> $GITHUB_ENV
+          echo "SHOULD_TAG=$SHOULD_TAG" >> $GITHUB_ENV
+
+      - name: Build Android APKs
+        run: |
+          ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare APK Outputs
         run: |
           mkdir -p output_apk
-          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} output_apk/JLPT_N3_Burmese_Vocab.apk \;
 
-      - name: Upload APK Artifact
+          # Copy Release APK
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
+            cp app/build/outputs/apk/release/app-release.apk "output_apk/JLPT_N3_Burmese_Vocab.apk"
+          fi
+
+          # Copy Debug APK
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk "output_apk/KanjiKotoba-${TAG_NAME}-debug.apk"
+          fi
+
+          echo "Generated APK files in output_apk:"
+          ls -lh output_apk/
+
+      - name: Upload APKs as Workflow Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: JLPT_N3_Burmese_Vocab_APK
-          path: output_apk/JLPT_N3_Burmese_Vocab.apk
+          name: KanjiKotoba-APKs-${{ env.TAG_NAME }}
+          path: output_apk/*.apk
           retention-days: 30
 
-      - name: Create GitHub Release on Tag
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Tag New Version in Git
+        if: env.SHOULD_TAG == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse -q --verify "refs/tags/${{ env.TAG_NAME }}" >/dev/null; then
+            echo "Creating and pushing Git tag: ${{ env.TAG_NAME }}"
+            git tag -a "${{ env.TAG_NAME }}" -m "Automated release tag ${{ env.TAG_NAME }}"
+            git push origin "${{ env.TAG_NAME }}" || echo "Git tag push skipped or remote tag already exists"
+          else
+            echo "Tag ${{ env.TAG_NAME }} already exists locally or on remote"
+          fi
+
+      - name: Publish GitHub Release
+        if: env.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: output_apk/JLPT_N3_Burmese_Vocab.apk
-          name: "Release ${{ github.ref_name }}"
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.RELEASE_TITLE }}
+          files: output_apk/*.apk
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.is_draft || false }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.is_prerelease || false }}
           generate_release_notes: true
           body: |
-            ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei - Android Release
-            
-            **APK Download**: Download `JLPT_N3_Burmese_Vocab.apk` attached below and install it directly on your Android device.
+            ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
 
-            #### Features:
-            - **JLPT N3 Past Exam Questions (မေးခွန်းဟောင်း 2014-2025)**: 1,357 Vocabulary & Kanji questions accurately integrated across 20 exam sessions with exact Myanmar/Burmese translations.
+            **Release Version:** `${{ env.TAG_NAME }}`  
+            **Build Commit:** `${{ github.sha }}`
+
+            ---
+
+            ### 📲 Download APK
+            - **Production Release**: `KanjiKotoba-${{ env.TAG_NAME }}-release.apk`
+            - **Standard Release**: `JLPT_N3_Burmese_Vocab.apk`
+            - **Debug / Testing**: `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
+
+            ---
+
+            ### 🌟 Key Highlights & Features
+            - **မေးခွန်းဟောင်းများ (2014-2025 Past Exam Questions)**: 1,357 real JLPT N3 Vocabulary & Kanji questions across 20 exam sessions with exact Myanmar/Burmese translations.
             - **Past Exam Sections**: Dedicated tabs for **Kotoba (語彙)**, **Kanji (漢字)**, and **3D Flashcards (ကတ်ပြား)** with session filters (2014/12 to 2025/12).
             - **Modern Clean Card Design**: Dynamic color accents, real-time drag border glows (Green for Good, Orange for Again, Blue for Flip), and real past exam sentence contexts.
             - **Smart Shuffle System**: 4 study shuffle modes including **Smart SRS Shuffle (မေးခွန်းခက် ဦးစားပေး)**, **Difficult Only Drill**, **Random Shuffle**, and original **Exam Chronological Order**.
@@ -96,18 +223,5 @@ jobs:
             - **Japanese Text-To-Speech (TTS)**: Pronounce Kanji, readings, vocabulary, collocations, and example sentences.
             - **Spaced Repetition (SRS)**: SM-2 spaced repetition algorithm for long-term memory retention.
             - **100% Offline Ready**: All vocabulary, past exams, and Burmese translations stored locally in Room SQLite.
-
-      - name: Create GitHub Release on Workflow Dispatch
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
-        uses: softprops/action-gh-release@v2
-        with:
-          files: output_apk/JLPT_N3_Burmese_Vocab.apk
-          tag_name: ${{ inputs.release_tag }}
-          name: "Release ${{ inputs.release_tag }}"
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          body: |
-            ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei - Android Release (${{ inputs.release_tag }})
-            
-            **APK Download**: Download `JLPT_N3_Burmese_Vocab.apk` attached below and install it directly on your Android device.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
