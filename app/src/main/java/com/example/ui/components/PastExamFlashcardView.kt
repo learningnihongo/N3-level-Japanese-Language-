@@ -7,11 +7,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.changedToUp
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -141,21 +139,28 @@ fun PastExamFlashcardView(
         label = "past_exam_3d_flip_rotation"
     )
 
+    // Auto pronounce Japanese word automatically whenever card is flipped to back
+    LaunchedEffect(isFlipped) {
+        if (isFlipped && currentCard != null) {
+            onSpeak(currentCard.reading.ifBlank { currentCard.kanji })
+        }
+    }
+
     fun nextCard() {
-        if (currentIndex < workingDeck.size - 1) {
+        if (workingDeck.isNotEmpty()) {
             isFlipped = false
             dragOffsetX = 0f
             dragOffsetY = 0f
-            currentIndex++
+            currentIndex = (currentIndex + 1) % workingDeck.size
         }
     }
 
     fun prevCard() {
-        if (currentIndex > 0) {
+        if (workingDeck.isNotEmpty()) {
             isFlipped = false
             dragOffsetX = 0f
             dragOffsetY = 0f
-            currentIndex--
+            currentIndex = if (currentIndex > 0) currentIndex - 1 else workingDeck.size - 1
         }
     }
 
@@ -381,71 +386,57 @@ fun PastExamFlashcardView(
 
         // 3. Centerpiece 3D Gesture Card
         if (currentCard != null) {
-            val cardGestureModifier = Modifier.pointerInput(currentIndex, gestureStyle, currentCard) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    var isDrag = false
-                    val touchSlop = viewConfiguration.touchSlop
-
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val current = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (current.changedToUp()) {
-                            current.consume()
-                            if (!isDrag) {
-                                // Tap to flip
-                                isFlipped = !isFlipped
-                            } else {
-                                // Swipe gesture finished
-                                if (gestureStyle == FlashcardGestureStyle.SWIPE_REVIEW) {
-                                    if (dragOffsetX > 60f) {
-                                        onRateCard(currentCard, ReviewRating.GOOD)
-                                        nextCard()
-                                    } else if (dragOffsetX < -60f) {
-                                        onRateCard(currentCard, ReviewRating.AGAIN)
-                                        nextCard()
-                                    }
-                                } else if (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP) {
-                                    if (abs(dragOffsetY) > 60f) {
-                                        isFlipped = !isFlipped
-                                    } else if (dragOffsetX > 60f) {
-                                        prevCard()
-                                    } else if (dragOffsetX < -60f) {
-                                        nextCard()
-                                    }
-                                } else {
-                                    // Default SLIDE_CAROUSEL
-                                    if (dragOffsetX > 60f) {
-                                        prevCard()
-                                    } else if (dragOffsetX < -60f) {
-                                        nextCard()
-                                    }
+            val cardGestureModifier = Modifier
+                .pointerInput(currentIndex, gestureStyle, currentCard) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            val threshold = 70f
+                            if (gestureStyle == FlashcardGestureStyle.SWIPE_REVIEW) {
+                                if (dragOffsetX > threshold) {
+                                    onRateCard(currentCard, ReviewRating.GOOD)
+                                    nextCard()
+                                } else if (dragOffsetX < -threshold) {
+                                    onRateCard(currentCard, ReviewRating.AGAIN)
+                                    nextCard()
                                 }
-                                dragOffsetX = 0f
-                                dragOffsetY = 0f
+                            } else if (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP) {
+                                if (abs(dragOffsetY) > threshold) {
+                                    isFlipped = !isFlipped
+                                } else if (dragOffsetX > threshold) {
+                                    prevCard()
+                                } else if (dragOffsetX < -threshold) {
+                                    nextCard()
+                                }
+                            } else {
+                                // Default SLIDE_CAROUSEL: Swipe left (negative offset) for next, swipe right (positive) for prev
+                                if (dragOffsetX > threshold) {
+                                    prevCard()
+                                } else if (dragOffsetX < -threshold) {
+                                    nextCard()
+                                }
                             }
-                            break
-                        }
-
-                        val dx = current.position.x - down.position.x
-                        val dy = current.position.y - down.position.y
-
-                        if (!isDrag) {
-                            if (abs(dx) > touchSlop || (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP && abs(dy) > touchSlop)) {
-                                isDrag = true
-                            }
-                        }
-
-                        if (isDrag) {
-                            current.consume()
-                            dragOffsetX = dx
+                            dragOffsetX = 0f
+                            dragOffsetY = 0f
+                        },
+                        onDragCancel = {
+                            dragOffsetX = 0f
+                            dragOffsetY = 0f
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffsetX += dragAmount.x
                             if (gestureStyle == FlashcardGestureStyle.VERTICAL_FLIP || gestureStyle == FlashcardGestureStyle.SWIPE_REVIEW) {
-                                dragOffsetY = dy
+                                dragOffsetY += dragAmount.y
                             }
                         }
-                    }
+                    )
                 }
-            }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    isFlipped = !isFlipped
+                }
 
             Box(
                 modifier = Modifier
