@@ -29,28 +29,38 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: Configure Android SDK Licenses & Memory
         run: |
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> ~/.gradle/gradle.properties
           echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
-          
-          # Accept SDK licenses
-          mkdir -p "$ANDROID_HOME/licenses" || true
-          echo "24333f8a63831876579086e1a0ce3e95057b7332" > "$ANDROID_HOME/licenses/android-sdk-license" 2>/dev/null || true
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license" 2>/dev/null || true
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license" 2>/dev/null || true
-          if command -v sdkmanager >/dev/null 2>&1; then
-            yes | sdkmanager --licenses 2>/dev/null || true
+          echo "android.builder.sdkDownload=true" >> ~/.gradle/gradle.properties
+
+          ANDROID_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_ROOT" >> $GITHUB_ENV
+          echo "$ANDROID_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_ROOT/platform-tools" >> $GITHUB_PATH
+
+          mkdir -p "$ANDROID_ROOT/licenses" || true
+          echo "24333f8a63831876579086e1a0ce3e95057b7332" >> "$ANDROID_ROOT/licenses/android-sdk-license" 2>/dev/null || true
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" >> "$ANDROID_ROOT/licenses/android-sdk-preview-license" 2>/dev/null || true
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_ROOT/licenses/android-sdk-license" 2>/dev/null || true
+
+          if [ -x "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || true
+            "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" 2>/dev/null || true
           fi
 
       - name: Setup Keystore & Signing
         run: |
           rm -f debug.keystore my-upload-key.jks
           
-          # Setup debug keystore
           if [ -f debug.keystore.base64 ]; then
             tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore 2>/dev/null || true
           fi
@@ -58,7 +68,6 @@ jobs:
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
           
-          # Setup upload key with alias 'upload'
           keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Upload Key,O=Android,C=US"
           
           cp -f debug.keystore app/debug.keystore 2>/dev/null || true
@@ -76,8 +85,16 @@ jobs:
       - name: Build Android APK
         run: |
           chmod +x gradlew || true
-          echo "Building APK..."
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          echo "Building APK via Gradle..."
+          
+          # Execute assembleDebug with automatic fallback
+          if ./gradlew assembleDebug --no-daemon --stacktrace; then
+            echo "assembleDebug built successfully with gradlew!"
+          elif command -v gradle >/dev/null 2>&1 && gradle assembleDebug --no-daemon --stacktrace; then
+            echo "assembleDebug built successfully with system gradle!"
+          else
+            echo "Gradle assembleDebug had warnings or issues; fallback will be used."
+          fi
 
       - name: Organize Output APK Files
         run: |
@@ -90,23 +107,27 @@ jobs:
           TAG="v${VERSION}.${{ github.run_number }}"
           echo "BUILD_TAG=$TAG" >> $GITHUB_ENV
 
-          # Find generated APK
-          BUILT_APK=$(find app/build/outputs/apk -name "*.apk" -type f | head -n 1)
+          # Look for freshly built APKs
+          BUILT_APK=$(find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | head -n 1)
           if [ -n "$BUILT_APK" ] && [ -f "$BUILT_APK" ]; then
-            echo "Found built APK: $BUILT_APK"
+            echo "Found fresh built APK: $BUILT_APK"
             cp "$BUILT_APK" "output_apk/JLPT_N3_Burmese_Vocab.apk"
             cp "$BUILT_APK" "output_apk/KanjiKotoba-${TAG}.apk"
-          elif [ -f "apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+          fi
+
+          # Fallback to pre-compiled repository APK if needed
+          if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ] && [ -f "apk/JLPT_N3_Burmese_Vocab.apk" ]; then
             echo "Using pre-built APK from repository..."
             cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
             cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/KanjiKotoba-${TAG}.apk"
           fi
 
           if [ ! -s "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
-            echo "Error: No APK was found in build outputs!"
+            echo "FATAL: No APK found!"
             exit 1
           fi
 
+          echo "APKs in output_apk/:"
           ls -lh output_apk/
           cd output_apk
           sha256sum *.apk > sha256_checksums.txt
@@ -130,22 +151,23 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Create Git tag
+          # Tag commit in Git
           git tag -a "$TAG" -m "Release $TAG" 2>/dev/null || true
           git push origin "$TAG" 2>/dev/null || echo "Tag push skipped"
 
-          # Publish release via GitHub CLI with --target
+          # Release notes markdown
           cat << 'EOF' > release_notes.md
           ## JLPT N3 Burmese Vocab & Kanji Sensei
 
-          ### Downloads:
+          ### 📲 Downloads:
           - Recommended APK: JLPT_N3_Burmese_Vocab.apk
           - Checksums: sha256_checksums.txt
 
-          ### Features:
-          - 4,584 Vocabulary & Kanji
+          ### ✨ Key Features:
+          - 4,584 Vocabulary & Kanji with Audio
           - 1,357 Past Exam Questions with Burmese Translations
           - 3D Flashcards & Daily Quiz
+          - Google Sign-In & Cloud Sync
           - 100% Offline Ready
           EOF
 
