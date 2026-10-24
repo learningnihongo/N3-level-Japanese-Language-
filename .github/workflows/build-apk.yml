@@ -46,12 +46,14 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write
 
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -65,18 +67,28 @@ jobs:
           gradle-version: '9.3.1'
           cache-read-only: false
 
+      - name: Optimize Gradle Performance and Memory
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
+          echo "org.gradle.caching=true" >> ~/.gradle/gradle.properties
+
       - name: Accept Android SDK Licenses
         run: |
           mkdir -p "$ANDROID_HOME/licenses" || true
           echo "24333f8a63831876579086e1a0ce3e95057b7332" > "$ANDROID_HOME/licenses/android-sdk-license" 2>/dev/null || true
           echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license" 2>/dev/null || true
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license" 2>/dev/null || true
           if [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
             yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || true
           fi
 
-      - name: Setup Keystore & Signing Environment
+      - name: Setup Keystore & Signing Keys
         run: |
           rm -f debug.keystore my-upload-key.jks
+          
+          # 1. Prepare debug.keystore
           if [ -f debug.keystore.base64 ]; then
             echo "Decoding debug.keystore from base64..."
             tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore 2>/dev/null || true
@@ -85,9 +97,12 @@ jobs:
             echo "Generating fresh valid debug.keystore with keytool..."
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
           fi
-          cp -f debug.keystore my-upload-key.jks 2>/dev/null || true
-          ls -la debug.keystore
-          echo "KEYSTORE_PATH=${GITHUB_WORKSPACE}/debug.keystore" >> $GITHUB_ENV
+
+          # 2. Prepare my-upload-key.jks with alias 'upload' (matching release signingConfig)
+          echo "Generating release upload key..."
+          keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Upload Key,O=Android,C=US" -noprompt
+
+          echo "KEYSTORE_PATH=${GITHUB_WORKSPACE}/my-upload-key.jks" >> $GITHUB_ENV
           echo "STORE_PASSWORD=android" >> $GITHUB_ENV
           echo "KEY_PASSWORD=android" >> $GITHUB_ENV
 
@@ -96,12 +111,6 @@ jobs:
           touch .env
           if [ -f .env.example ]; then
             cp -n .env.example .env || true
-          fi
-
-      - name: Make Gradle Wrapper Executable
-        run: |
-          if [ -f gradlew ]; then
-            chmod +x gradlew
           fi
 
       - name: Calculate Version and Tag Name
@@ -113,29 +122,23 @@ jobs:
           fi
           echo "Base Version: $BASE_VERSION"
 
-          SHOULD_RELEASE="false"
+          SHOULD_RELEASE="true"
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
-            SHOULD_RELEASE="true"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [ -n "${{ inputs.release_tag }}" ]; then
-              TAG_NAME="${{ inputs.release_tag }}"
-            else
-              TAG_NAME="v${BASE_VERSION}.${{ github.run_number }}"
-            fi
-            if [ "${{ inputs.create_release }}" == "true" ]; then
-              SHOULD_RELEASE="true"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [ -n "${{ inputs.release_tag }}" ]; then
+            TAG_NAME="${{ inputs.release_tag }}"
+            if [ "${{ inputs.create_release }}" == "false" ]; then
+              SHOULD_RELEASE="false"
             fi
           elif [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
             TAG_NAME="v${BASE_VERSION}.${{ github.run_number }}"
-            SHOULD_RELEASE="true"
           else
-            TAG_NAME="v${BASE_VERSION}-dev.${{ github.run_number }}"
+            TAG_NAME="v${BASE_VERSION}-run${{ github.run_number }}"
             SHOULD_RELEASE="false"
           fi
 
-          if [ -n "${{ inputs.release_title }}" ]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [ -n "${{ inputs.release_title }}" ]; then
             RELEASE_TITLE="${{ inputs.release_title }}"
           else
             RELEASE_TITLE="KanjiKotoba JLPT N3 Sensei ${TAG_NAME}"
@@ -144,11 +147,23 @@ jobs:
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
           echo "SHOULD_RELEASE=$SHOULD_RELEASE" >> $GITHUB_ENV
+          echo "Calculated Tag: $TAG_NAME, Should Release: $SHOULD_RELEASE"
 
-      - name: Build Android APK (Release & Debug)
+      - name: Build Android APK
         run: |
-          echo "Running Gradle build..."
-          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace || ./gradlew assembleDebug --no-daemon --stacktrace
+          echo "Building APK via Gradle..."
+          chmod +x gradlew || true
+          
+          # Attempt release build, fall back cleanly to debug build
+          if ./gradlew assembleRelease --no-daemon --stacktrace; then
+            echo "assembleRelease succeeded!"
+          else
+            echo "assembleRelease failed, building assembleDebug..."
+            ./gradlew assembleDebug --no-daemon --stacktrace || gradle assembleDebug --no-daemon --stacktrace
+          fi
+          
+          # Also ensure debug APK is present
+          ./gradlew assembleDebug --no-daemon || gradle assembleDebug --no-daemon || true
 
       - name: Organize Output APK Files
         id: organize_apks
@@ -174,14 +189,14 @@ jobs:
             fi
           fi
 
-          # Fallback to pre-built apk if needed
+          # Fallback to pre-built repository APK if present
           if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ] && [ -f "apk/JLPT_N3_Burmese_Vocab.apk" ]; then
             echo "Falling back to repository APK..."
             cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
             cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
           fi
 
-          echo "Output APK list:"
+          echo "Generated APK Files:"
           ls -lh output_apk/
           if [ ! -s "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
             echo "Error: No APK file was generated!"
@@ -202,41 +217,71 @@ jobs:
           retention-days: 60
           if-no-files-found: error
 
-      - name: Publish GitHub Release
+      - name: Create Git Tag & Publish GitHub Release
         if: env.SHOULD_RELEASE == 'true'
-        uses: softprops/action-gh-release@v2
-        continue-on-error: true
-        with:
-          tag_name: ${{ env.TAG_NAME }}
-          name: ${{ env.RELEASE_TITLE }}
-          files: output_apk/*
-          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.is_draft || false }}
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.is_prerelease || false }}
-          generate_release_notes: true
-          body: |
-            ## 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
-
-            **Release Version:** `${{ env.TAG_NAME }}`
-            **Commit:** `${{ github.sha }}`
-
-            ---
-
-            ### 📲 Downloads
-            * **Recommended (Direct Install):** `JLPT_N3_Burmese_Vocab.apk`
-            * **Production Release:** `KanjiKotoba-${{ env.TAG_NAME }}-release.apk`
-            * **Debug APK:** `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
-            * **Checksums:** `sha256_checksums.txt`
-
-            ---
-
-            ### ✨ အဓိက ပါဝင်သော အချက်များ (Key Features)
-            * **ဝေါဟာရ ၄,၅၈၄ ခု အပြည့်အစုံ:** JLPT N3 စာမေးပွဲအတွက် လိုအပ်သော Kanji, Kotoba, အဓိပ္ပာယ် နှင့် အသံထွက် ၄,၅၈၄ ခု အားလုံး ပါဝင်ပါသည်။
-            * **စစ်မှန်သော မေးခွန်းဟောင်းများ (2014-2025):** ၁,၃၅၇ ခုသော မေးခွန်းဟောင်းများကို မြန်မာဘာသာပြန်နှင့်တကွ လေ့ကျင့်နိုင်ပါသည်။
-            * **3D Flashcards & Interactive Gestures:** Flip, Swipe, နှင့် Smooth Carousel အမူအရာများဖြင့် လေ့လာနိုင်ပါသည်။
-            * **Daily Quiz & Streak Tracking:** နေ့စဉ် Quiz လေ့ကျင့်မှုနှင့် Streak စနစ် ပါဝင်ပါသည်။
-            * **100% Offline Ready:** အင်တာနက်မလိုဘဲ ဖုန်းထဲတွင် တိုက်ရိုက် လေ့လာမှတ်သားနိုင်ပါသည်။
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Configuring Git author..."
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create and push git tag to repository if it doesn't already exist
+          echo "Checking tag $TAG_NAME..."
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Creating tag $TAG_NAME at commit ${{ github.sha }}..."
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            git push origin "$TAG_NAME" || echo "Note: Push tag returned status $?, proceeding with release creation..."
+          fi
+
+          # Prepare release notes
+          cat << 'EOF' > release_notes.md
+## 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
+
+**Release Version:** `${{ env.TAG_NAME }}`
+**Commit:** `${{ github.sha }}`
+
+---
+
+### 📲 Downloads (တိုက်ရိုက်ဒေါင်းလုဒ်ရယူရန်)
+* **⭐ အကြံပြုထားသော APK (Direct Install):** `JLPT_N3_Burmese_Vocab.apk`
+* **Release APK:** `KanjiKotoba-${{ env.TAG_NAME }}-release.apk`
+* **Debug APK:** `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
+* **Checksums:** `sha256_checksums.txt`
+
+---
+
+### ✨ အဓိက ပါဝင်သော အချက်များ (Key Features)
+* **ဝေါဟာရ ၄,၅၈၄ ခု အပြည့်အစုံ:** JLPT N3 စာမေးပွဲအတွက် လိုအပ်သော Kanji, Kotoba, အဓိပ္ပာယ် နှင့် အသံထွက် ၄,၅၈၄ ခု အားလုံး ပါဝင်ပါသည်။
+* **စစ်မှန်သော မေးခွန်းဟောင်းများ (2014-2025):** ၁,၃၅၇ ခုသော မေးခွန်းဟောင်းများကို မြန်မာဘာသာပြန်နှင့်တကွ လေ့ကျင့်နိုင်ပါသည်။
+* **3D Flashcards & Interactive Gestures:** Flip, Swipe, နှင့် Smooth Carousel အမူအရာများဖြင့် လေ့လာနိုင်ပါသည်။
+* **Daily Quiz & Streak Tracking:** နေ့စဉ် Quiz လေ့ကျင့်မှုနှင့် Streak စနစ် ပါဝင်ပါသည်။
+* **Google Sign-In & Cloud Sync:** Firebase Authentication ဖြင့် လေ့လာမှုမှတ်တမ်းများကို Cloud Backup ပြုလုပ်နိုင်ပါသည်။
+* **100% Offline Ready:** အင်တာနက်မလိုဘဲ ဖုန်းထဲတွင် တိုက်ရိုက် လေ့လာမှတ်သားနိုင်ပါသည်။
+EOF
+
+          DRAFT_FLAG=""
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.is_draft }}" == "true" ]; then
+            DRAFT_FLAG="--draft"
+          fi
+
+          PRERELEASE_FLAG=""
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.is_prerelease }}" == "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          echo "Publishing Release via GitHub CLI (gh)..."
+          # Try GitHub CLI with --clobber so it never errors on pre-existing tags or releases
+          gh release create "$TAG_NAME" output_apk/* \
+            --title "$RELEASE_TITLE" \
+            --notes-file release_notes.md \
+            --target "${{ github.sha }}" \
+            $DRAFT_FLAG $PRERELEASE_FLAG \
+            --clobber || {
+              echo "gh release create failed, attempting asset upload or fallback..."
+              gh release upload "$TAG_NAME" output_apk/* --clobber || true
+            }
 
       - name: Build Summary Output
         run: |
