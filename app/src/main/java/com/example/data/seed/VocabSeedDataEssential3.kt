@@ -13,10 +13,10 @@ object VocabSeedDataEssential3 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataEssential3 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 104 (29 items)
         card(3114L, 104, "第104課 公共・安全・商品 (Public, Safety & Commerce)", "N3 漢字言葉: 公・分・安・完・定・商 (Public & Commerce)", "公務員", "こうむいん", "အစိုးရ၀န်ထမ်း", "名詞", "公務員の使い方や意味をしっかり確認して復習しましょう。", "公務員 ၏ အဓိပ္ပာယ်မှာ 'အစိုးရ၀န်ထမ်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson104")
         card(3115L, 104, "第104課 公共・安全・商品 (Public, Safety & Commerce)", "N3 漢字言葉: 公・分・安・完・定・商 (Public & Commerce)", "公園", "こうえん", "ပန်းခြံ", "名詞", "公園の使い方や意味をしっかり確認して復習しましょう。", "公園 ၏ အဓိပ္ပာယ်မှာ 'ပန်းခြံ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson104")
         card(3116L, 104, "第104課 公共・安全・商品 (Public, Safety & Commerce)", "N3 漢字言葉: 公・分・安・完・定・商 (Public & Commerce)", "分解", "ぶんかい", "ခွဲခြမ်းစိတ်ဖြာခြင်း", "名詞", "分解の使い方や意味をしっかり確認して復習しましょう。", "分解 ၏ အဓိပ္ပာယ်မှာ 'ခွဲခြမ်းစိတ်ဖြာခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson104")
@@ -65,8 +64,6 @@ object VocabSeedDataEssential3 {
         card(3140L, 104, "第104課 公共・安全・商品 (Public, Safety & Commerce)", "N3 漢字言葉: 公・分・安・完・定・商 (Public & Commerce)", "表情", "ひょうじょう", "မျက်နှာအမူအရာ", "名詞", "表情の使い方や意味をしっかり確認して復習しましょう。", "表情 ၏ အဓိပ္ပာယ်မှာ 'မျက်နှာအမူအရာ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson104")
         card(3141L, 104, "第104課 公共・安全・商品 (Public, Safety & Commerce)", "N3 漢字言葉: 公・分・安・完・定・商 (Public & Commerce)", "表現", "ひょうげん", "ဖော်ပြချက်", "名詞", "表現の使い方や意味をしっかり確認して復習しましょう。", "表現 ၏ အဓိပ္ပာယ်မှာ 'ဖော်ပြချက်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson104")
         card(3142L, 104, "第104課 公共・安全・商品 (Public, Safety & Commerce)", "N3 漢字言葉: 公・分・安・完・定・商 (Public & Commerce)", "表示", "ひょうじ", "ဖော်ပြခြင်း", "名詞", "表示の使い方や意味をしっかり確認して復習しましょう。", "表示 ၏ အဓိပ္ပာယ်မှာ 'ဖော်ပြခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson104")
-
-        // Lesson 105 (29 items)
         card(3143L, 105, "第105課 製造・観光・受付 (Production & Reception)", "N3 漢字言葉: 製・要・観・解・記・受 (Production & Reception)", "表面", "ひょうめん", "မျက်နှာပြင်", "名詞", "表面の使い方や意味をしっかり確認して復習しましょう。", "表面 ၏ အဓိပ္ပာယ်မှာ 'မျက်နှာပြင်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson105")
         card(3144L, 105, "第105課 製造・観光・受付 (Production & Reception)", "N3 漢字言葉: 製・要・観・解・記・受 (Production & Reception)", "裏返す", "うらがえす", "ပြောင်းပြန်လှန်သည်", "動詞", "裏返すの使い方や意味をしっかり確認して復習しましょう。", "裏返す ၏ အဓိပ္ပာယ်မှာ 'ပြောင်းပြန်လှန်သည်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson105")
         card(3145L, 105, "第105課 製造・観光・受付 (Production & Reception)", "N3 漢字言葉: 製・要・観・解・記・受 (Production & Reception)", "製品", "せいひん", "ထုတ်ကုန်", "名詞", "製品の使い方や意味をしっかり確認して復習しましょう。", "製品 ၏ အဓိပ္ပာယ်မှာ 'ထုတ်ကုန်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson105")

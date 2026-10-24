@@ -55,6 +55,14 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun refreshDatabaseCards(forceRefresh: Boolean = false, onComplete: ((Int) -> Unit)? = null) {
+        viewModelScope.launch {
+            repository.ensureDataSeeded(forceRefresh)
+            val count = repository.getAllCardsDirect().size
+            onComplete?.invoke(count)
+        }
+    }
+
     // ------------------------------------------------------------------------
     // User & Cloud Sync
     // ------------------------------------------------------------------------
@@ -852,8 +860,33 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun signInWithGoogle(): Result<Unit> {
-        return Result.success(Unit)
+    suspend fun signInWithGoogle(activityContext: android.content.Context? = null): Result<FirebaseUser> {
+        val res = authManager.signInWithGoogle(activityContext)
+        if (res.isSuccess) {
+            val user = res.getOrNull()
+            if (user != null) {
+                try {
+                    val currentProfile = userProfile.value
+                    firestoreSyncRepo.saveOrUpdateProfile(
+                        FirestoreUserProfile(
+                            id = user.uid,
+                            userId = user.uid,
+                            email = user.email,
+                            displayName = user.displayName ?: "JLPT N3 Scholar",
+                            avatarUrl = user.photoUrl?.toString(),
+                            targetJlptLevel = "N3",
+                            dailyGoal = currentProfile?.dailyGoal?.toLong() ?: 15L,
+                            totalXp = currentProfile?.totalXp?.toLong() ?: 0L,
+                            currentStreak = quizStreakInfo.value.currentStreak.toLong().coerceAtLeast(1L),
+                            bestStreak = quizStreakInfo.value.bestStreak.toLong().coerceAtLeast(1L)
+                        )
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("VocabViewModel", "Initial cloud sync failed: ${e.message}")
+                }
+            }
+        }
+        return res
     }
 
     fun signOut() {

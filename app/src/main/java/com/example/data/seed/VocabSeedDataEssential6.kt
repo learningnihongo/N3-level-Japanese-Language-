@@ -13,10 +13,10 @@ object VocabSeedDataEssential6 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataEssential6 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 110 (29 items)
         card(3288L, 110, "第110課 指示・通信・教育 (Instruction & Education)", "N3 漢字言葉: 指・接・報・救・教・数・整 (Instruction & Education)", "押しボタン式", "おしボタンしき", "နှိပ်ခလုတ်ပုံစံ", "名詞", "押しボタン式の使い方や意味をしっかり確認して復習しましょう。", "押しボタン式 ၏ အဓိပ္ပာယ်မှာ 'နှိပ်ခလုတ်ပုံစံ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson110")
         card(3289L, 110, "第110課 指示・通信・教育 (Instruction & Education)", "N3 漢字言葉: 指・接・報・救・教・数・整 (Instruction & Education)", "押し入れ", "おしいれ", "ဗီရို", "名詞", "押し入れの使い方や意味をしっかり確認して復習しましょう。", "押し入れ ၏ အဓိပ္ပာယ်မှာ 'ဗီရို' ဖြစ်သည်။", "EssentialKanji, N3, Lesson110")
         card(3290L, 110, "第110課 指示・通信・教育 (Instruction & Education)", "N3 漢字言葉: 指・接・報・救・教・数・整 (Instruction & Education)", "指定", "してい", "ညွန်ပြခြင်း", "名詞", "指定の使い方や意味をしっかり確認して復習しましょう。", "指定 ၏ အဓိပ္ပာယ်မှာ 'ညွန်ပြခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson110")
@@ -65,8 +64,6 @@ object VocabSeedDataEssential6 {
         card(3314L, 110, "第110課 指示・通信・教育 (Instruction & Education)", "N3 漢字言葉: 指・接・報・救・教・数・整 (Instruction & Education)", "整理", "せいり", "သပ်ရပ်အောင်လုပ်ခြင်း", "名詞", "整理の使い方や意味をしっかり確認して復習しましょう。", "整理 ၏ အဓိပ္ပာယ်မှာ 'သပ်ရပ်အောင်လုပ်ခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson110")
         card(3315L, 110, "第110課 指示・通信・教育 (Instruction & Education)", "N3 漢字言葉: 指・接・報・救・教・数・整 (Instruction & Education)", "整理券", "せいりけん", "(ရထား)တိုကင်လက်မှတ်", "名詞", "整理券の使い方や意味をしっかり確認して復習しましょう。", "整理券 ၏ အဓိပ္ပာယ်မှာ '(ရထား)တိုကင်လက်မှတ်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson110")
         card(3316L, 110, "第110課 指示・通信・教育 (Instruction & Education)", "N3 漢字言葉: 指・接・報・救・教・数・整 (Instruction & Education)", "割合", "わりあい", "အချိုးကျ", "名詞", "割合の使い方や意味をしっかり確認して復習しましょう。", "割合 ၏ အဓိပ္ပာယ်မှာ 'အချိုးကျ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson110")
-
-        // Lesson 111 (29 items)
         card(3317L, 111, "第111課 日常・相談・自己 (Daily Routine, Advice & Self)", "N3 漢字言葉: 日・昨・相・自・身・賞 (Daily Routine & Self)", "割引", "わりびき", "Discount", "名詞", "割引の使い方や意味をしっかり確認して復習しましょう。", "割引 ၏ အဓိပ္ပာယ်မှာ 'Discount' ဖြစ်သည်။", "EssentialKanji, N3, Lesson111")
         card(3318L, 111, "第111課 日常・相談・自己 (Daily Routine, Advice & Self)", "N3 漢字言葉: 日・昨・相・自・身・賞 (Daily Routine & Self)", "利用", "りよう", "အသုံးပြုခြင်း", "名詞", "利用の使い方や意味をしっかり確認して復習しましょう。", "利用 ၏ အဓိပ္ပာယ်မှာ 'အသုံးပြုခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson111")
         card(3319L, 111, "第111課 日常・相談・自己 (Daily Routine, Advice & Self)", "N3 漢字言葉: 日・昨・相・自・身・賞 (Daily Routine & Self)", "刺身", "さしみ", "ငါးအစိမ်းအသားလွှာ", "名詞", "刺身の使い方や意味をしっかり確認して復習しましょう。", "刺身 ၏ အဓိပ္ပာယ်မှာ 'ငါးအစိမ်းအသားလွှာ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson111")
@@ -96,8 +93,6 @@ object VocabSeedDataEssential6 {
         card(3343L, 111, "第111課 日常・相談・自己 (Daily Routine, Advice & Self)", "N3 漢字言葉: 日・昨・相・自・身・賞 (Daily Routine & Self)", "身分", "みぶん", "လူတန်းစား", "名詞", "身分の使い方や意味をしっかり確認して復習しましょう。", "身分 ၏ အဓိပ္ပာယ်မှာ 'လူတန်းစား' ဖြစ်သည်။", "EssentialKanji, N3, Lesson111")
         card(3344L, 111, "第111課 日常・相談・自己 (Daily Routine, Advice & Self)", "N3 漢字言葉: 日・昨・相・自・身・賞 (Daily Routine & Self)", "身長", "しんちょう", "အရပ်အမောင်း", "名詞", "身長の使い方や意味をしっかり確認して復習しましょう。", "身長 ၏ အဓိပ္ပာယ်မှာ 'အရပ်အမောင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson111")
         card(3345L, 111, "第111課 日常・相談・自己 (Daily Routine, Advice & Self)", "N3 漢字言葉: 日・昨・相・自・身・賞 (Daily Routine & Self)", "賞品", "しょうひん", "ဆုပစ္စည်း", "名詞", "賞品の使い方や意味をしっかり確認して復習しましょう。", "賞品 ၏ အဓိပ္ပာယ်မှာ 'ဆုပစ္စည်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson111")
-
-        // Lesson 112 (29 items)
         card(3346L, 112, "第112課 貿易・職業・規則 (Trade, Careers & Rules)", "N3 漢字言葉: 費・貿・職・船・荷・禁 (Trade, Careers & Rules)", "賞金", "しょうきん", "ဆုကြေးငွေ", "名詞", "賞金の使い方や意味をしっかり確認して復習しましょう。", "賞金 ၏ အဓိပ္ပာယ်မှာ 'ဆုကြေးငွေ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson112")
         card(3347L, 112, "第112課 貿易・職業・規則 (Trade, Careers & Rules)", "N3 漢字言葉: 費・貿・職・船・荷・禁 (Trade, Careers & Rules)", "賞味期限", "しょうみきげん", "သက်တမ်းကုန်ဆုံးသည့်ရက်", "名詞", "賞味期限の使い方や意味をしっかり確認して復習しましょう。", "賞味期限 ၏ အဓိပ္ပာယ်မှာ 'သက်တမ်းကုန်ဆုံးသည့်ရက်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson112")
         card(3348L, 112, "第112課 貿易・職業・規則 (Trade, Careers & Rules)", "N3 漢字言葉: 費・貿・職・船・荷・禁 (Trade, Careers & Rules)", "費用", "ひよう", "ကုန်ကျစရိတ်၊ အသုံးစရိတ်", "名詞", "費用の使い方や意味をしっかり確認して復習しましょう。", "費用 ၏ အဓိပ္ပာယ်မှာ 'ကုန်ကျစရိတ်၊ အသုံးစရိတ်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson112")

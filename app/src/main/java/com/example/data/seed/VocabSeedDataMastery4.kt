@@ -13,10 +13,10 @@ object VocabSeedDataMastery4 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataMastery4 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 129 (28 items)
         card(4250L, 129, "第129課 人間・思考・生活習慣 (Human Mind & Life Habits)", "Mastery: 人間・心理・生活習慣 (Mind & Habits)", "面接", "めんせつ", "အင်တာဗျူး", "名詞", "面接の使い方や意味をしっかり確認して復習しましょう。", "面接 ၏ အဓိပ္ပာယ်မှာ 'အင်တာဗျူး' ဖြစ်သည်။", "MasteryKanji, N3, Lesson129")
         card(4251L, 129, "第129課 人間・思考・生活習慣 (Human Mind & Life Habits)", "Mastery: 人間・心理・生活習慣 (Mind & Habits)", "短時間", "たんじかん", "အချိန်တို", "名詞", "短時間の使い方や意味をしっかり確認して復習しましょう。", "短時間 ၏ အဓိပ္ပာယ်မှာ 'အချိန်တို' ဖြစ်သည်။", "MasteryKanji, N3, Lesson129")
         card(4252L, 129, "第129課 人間・思考・生活習慣 (Human Mind & Life Habits)", "Mastery: 人間・心理・生活習慣 (Mind & Habits)", "正三角形", "せいさんかくけい", "သုံးနားညီတြိဂံ", "名詞", "正三角形の使い方や意味をしっかり確認して復習しましょう。", "正三角形 ၏ အဓိပ္ပာယ်မှာ 'သုံးနားညီတြိဂံ' ဖြစ်သည်။", "MasteryKanji, N3, Lesson129")
@@ -64,8 +63,6 @@ object VocabSeedDataMastery4 {
         card(4275L, 129, "第129課 人間・思考・生活習慣 (Human Mind & Life Habits)", "Mastery: 人間・心理・生活習慣 (Mind & Habits)", "王様", "おうさま", "ဘုရင်", "名詞", "王様の使い方や意味をしっかり確認して復習しましょう。", "王様 ၏ အဓိပ္ပာယ်မှာ 'ဘုရင်' ဖြစ်သည်။", "MasteryKanji, N3, Lesson129")
         card(4276L, 129, "第129課 人間・思考・生活習慣 (Human Mind & Life Habits)", "Mastery: 人間・心理・生活習慣 (Mind & Habits)", "大学進学率", "だいがくしんがくりつ", "တက္ကသိုလ်ဆက်တက်မှုနှုန်း", "名詞", "大学進学率の使い方や意味をしっかり確認して復習しましょう。", "大学進学率 ၏ အဓိပ္ပာယ်မှာ 'တက္ကသိုလ်ဆက်တက်မှုနှုန်း' ဖြစ်သည်။", "MasteryKanji, N3, Lesson129")
         card(4277L, 129, "第129課 人間・思考・生活習慣 (Human Mind & Life Habits)", "Mastery: 人間・心理・生活習慣 (Mind & Habits)", "あんパン", "あんパン", "ပဲပေါင်မုန့်", "名詞", "あんパンの使い方や意味をしっかり確認して復習しましょう。", "あんパン ၏ အဓိပ္ပာယ်မှာ 'ပဲပေါင်မုန့်' ဖြစ်သည်။", "MasteryKanji, N3, Lesson129")
-
-        // Lesson 130 (28 items)
         card(4278L, 130, "第130課 交流・設備・学校生活 (School, Facilities & Events)", "Mastery: 交流・設備・学校・音楽 (School & Facilities)", "工夫する", "くふうする", "ကြံဆသည်။", "動詞", "工夫するの使い方や意味をしっかり確認して復習しましょう。", "工夫する ၏ အဓိပ္ပာယ်မှာ 'ကြံဆသည်။' ဖြစ်သည်။", "MasteryKanji, N3, Lesson130")
         card(4279L, 130, "第130課 交流・設備・学校生活 (School, Facilities & Events)", "Mastery: 交流・設備・学校・音楽 (School & Facilities)", "親友", "しんゆう", "သူငယ်ချင်းကောင်း", "名詞", "親友の使い方や意味をしっかり確認して復習しましょう。", "親友 ၏ အဓိပ္ပာယ်မှာ 'သူငယ်ချင်းကောင်း' ဖြစ်သည်။", "MasteryKanji, N3, Lesson130")
         card(4280L, 130, "第130課 交流・設備・学校生活 (School, Facilities & Events)", "Mastery: 交流・設備・学校・音楽 (School & Facilities)", "頼む", "たのむ", "တောင်းဆိုသည်။", "動詞", "頼むの使い方や意味をしっかり確認して復習しましょう。", "頼む ၏ အဓိပ္ပာယ်မှာ 'တောင်းဆိုသည်။' ဖြစ်သည်။", "MasteryKanji, N3, Lesson130")
@@ -94,8 +91,6 @@ object VocabSeedDataMastery4 {
         card(4303L, 130, "第130課 交流・設備・学校生活 (School, Facilities & Events)", "Mastery: 交流・設備・学校・音楽 (School & Facilities)", "屋根", "やね", "ခေါင်မိုး", "名詞", "屋根の使い方や意味をしっかり確認して復習しましょう。", "屋根 ၏ အဓိပ္ပာယ်မှာ 'ခေါင်မိုး' ဖြစ်သည်။", "MasteryKanji, N3, Lesson130")
         card(4304L, 130, "第130課 交流・設備・学校生活 (School, Facilities & Events)", "Mastery: 交流・設備・学校・音楽 (School & Facilities)", "音楽室", "おんがくしつ", "ဂီတခန်း", "名詞", "音楽室の使い方や意味をしっかり確認して復習しましょう。", "音楽室 ၏ အဓိပ္ပာယ်မှာ 'ဂီတခန်း' ဖြစ်သည်။", "MasteryKanji, N3, Lesson130")
         card(4305L, 130, "第130課 交流・設備・学校生活 (School, Facilities & Events)", "Mastery: 交流・設備・学校・音楽 (School & Facilities)", "楽器", "がっき", "တူရိယာ", "名詞", "楽器の使い方や意味をしっかり確認して復習しましょう。", "楽器 ၏ အဓိပ္ပာယ်မှာ 'တူရိယာ' ဖြစ်သည်။", "MasteryKanji, N3, Lesson130")
-
-        // Lesson 131 (28 items)
         card(4306L, 131, "第131課 行動・トラブル解決・観光 (Action, Resolution & Tourism)", "Mastery: 行動・解決・観光・表現 (Action & Tourism)", "十分水分", "じゅうぶんすいぶん", "ရေဓာတ်လုံလောက်မှု", "名詞", "十分水分の使い方や意味をしっかり確認して復習しましょう。", "十分水分 ၏ အဓိပ္ပာယ်မှာ 'ရေဓာတ်လုံလောက်မှု' ဖြစ်သည်။", "MasteryKanji, N3, Lesson131")
         card(4307L, 131, "第131課 行動・トラブル解決・観光 (Action, Resolution & Tourism)", "Mastery: 行動・解決・観光・表現 (Action & Tourism)", "調節する", "ちょうせつする", "ချိန်ညှိသည်။", "動詞", "調節するの使い方や意味をしっかり確認して復習しましょう。", "調節する ၏ အဓိပ္ပာယ်မှာ 'ချိန်ညှိသည်။' ဖြစ်သည်။", "MasteryKanji, N3, Lesson131")
         card(4308L, 131, "第131課 行動・トラブル解決・観光 (Action, Resolution & Tourism)", "Mastery: 行動・解決・観光・表現 (Action & Tourism)", "番組表", "ばんぐみひょう", "အစီအစဉ်ဇယား", "名詞", "番組表の使い方や意味をしっかり確認して復習しましょう。", "番組表 ၏ အဓိပ္ပာယ်မှာ 'အစီအစဉ်ဇယား' ဖြစ်သည်။", "MasteryKanji, N3, Lesson131")

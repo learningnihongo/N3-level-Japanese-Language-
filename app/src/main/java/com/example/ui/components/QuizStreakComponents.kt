@@ -66,7 +66,8 @@ fun QuizStreakHeaderBadge(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 Box(
                     modifier = Modifier
@@ -80,7 +81,7 @@ fun QuizStreakHeaderBadge(
                     )
                 }
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -89,7 +90,8 @@ fun QuizStreakHeaderBadge(
                             text = "${streakInfo.currentStreak} Day Streak",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
                         )
                         Surface(
                             shape = RoundedCornerShape(6.dp),
@@ -100,17 +102,22 @@ fun QuizStreakHeaderBadge(
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                 fontWeight = FontWeight.SemiBold,
                                 color = badgeColor,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                maxLines = 1
                             )
                         }
                     }
                     Text(
                         text = streakInfo.streakStatusMessage,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.width(6.dp))
 
             Icon(
                 imageVector = Icons.Default.LocalFireDepartment,

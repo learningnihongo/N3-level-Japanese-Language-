@@ -3,11 +3,10 @@ name: Build and Release Android APK
 on:
   push:
     branches:
-      - '**'
+      - main
+      - master
     tags:
       - 'v*'
-      - '[0-9]+.*'
-      - '*'
   workflow_dispatch:
     inputs:
       release_tag:
@@ -16,7 +15,7 @@ on:
         type: string
         default: ''
       release_title:
-        description: 'Release Title (leave blank for default)'
+        description: 'Release Title (leave blank for auto-generated title)'
         required: false
         type: string
         default: ''
@@ -49,7 +48,7 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -59,25 +58,31 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+          cache-read-only: false
 
       - name: Accept Android SDK Licenses
         run: |
-          yes | sdkmanager --licenses 2>/dev/null || true
+          mkdir -p "$ANDROID_HOME/licenses" || true
+          echo "24333f8a63831876579086e1a0ce3e95057b7332" > "$ANDROID_HOME/licenses/android-sdk-license" 2>/dev/null || true
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license" 2>/dev/null || true
+          if [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || true
+          fi
 
-      - name: Setup Keystore
+      - name: Setup Keystore & Signing Environment
         run: |
-          # 1. Clean existing keystore to avoid corruption
-          rm -f debug.keystore
-          # 2. Decode from base64 if present (stripping CR/LF/spaces)
+          rm -f debug.keystore my-upload-key.jks
           if [ -f debug.keystore.base64 ]; then
-            echo "Restoring debug.keystore from base64..."
+            echo "Decoding debug.keystore from base64..."
             tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore 2>/dev/null || true
           fi
-          # 3. Generate fresh valid debug keystore if missing or 0 bytes
           if [ ! -s debug.keystore ]; then
-            echo "Generating clean debug.keystore with keytool..."
-            rm -f debug.keystore
+            echo "Generating fresh valid debug.keystore with keytool..."
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
           fi
           cp -f debug.keystore my-upload-key.jks 2>/dev/null || true
@@ -86,11 +91,11 @@ jobs:
           echo "STORE_PASSWORD=android" >> $GITHUB_ENV
           echo "KEY_PASSWORD=android" >> $GITHUB_ENV
 
-      - name: Prepare Secrets & Environment Files
+      - name: Prepare Secrets & Environment Configuration
         run: |
           touch .env
           if [ -f .env.example ]; then
-            cp .env.example .env
+            cp -n .env.example .env || true
           fi
 
       - name: Make Gradle Wrapper Executable
@@ -99,8 +104,8 @@ jobs:
             chmod +x gradlew
           fi
 
-      - name: Determine Version and Tag
-        id: determine_version
+      - name: Calculate Version and Tag Name
+        id: versioning
         run: |
           BASE_VERSION=$(grep -oE 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n1 | cut -d'"' -f2)
           if [ -z "$BASE_VERSION" ]; then
@@ -113,7 +118,6 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
             SHOULD_RELEASE="true"
-            echo "Event: Tag Push -> $TAG_NAME"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [ -n "${{ inputs.release_tag }}" ]; then
               TAG_NAME="${{ inputs.release_tag }}"
@@ -123,15 +127,12 @@ jobs:
             if [ "${{ inputs.create_release }}" == "true" ]; then
               SHOULD_RELEASE="true"
             fi
-            echo "Event: Workflow Dispatch -> $TAG_NAME"
           elif [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
             TAG_NAME="v${BASE_VERSION}.${{ github.run_number }}"
             SHOULD_RELEASE="true"
-            echo "Event: Push to main/master -> $TAG_NAME"
           else
             TAG_NAME="v${BASE_VERSION}-dev.${{ github.run_number }}"
             SHOULD_RELEASE="false"
-            echo "Event: Branch push -> $TAG_NAME"
           fi
 
           if [ -n "${{ inputs.release_title }}" ]; then
@@ -144,109 +145,102 @@ jobs:
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
           echo "SHOULD_RELEASE=$SHOULD_RELEASE" >> $GITHUB_ENV
 
-      - name: Build Android Release APK
-        continue-on-error: true
+      - name: Build Android APK (Release & Debug)
         run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace || true
+          echo "Running Gradle build..."
+          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace || ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Build Android Debug APK
-        run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace || true
-
-      - name: Prepare APK Outputs
+      - name: Organize Output APK Files
+        id: organize_apks
         run: |
           mkdir -p output_apk
 
-          # 1. Locate freshly built Release APK
-          RELEASE_APK=$(find app/build/outputs/apk/release .build-outputs -name "*.apk" -type f 2>/dev/null | head -n 1)
+          # Locate built APKs
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" -type f 2>/dev/null | head -n 1)
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" -type f 2>/dev/null | head -n 1)
+
           if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
-            echo "Found freshly built Release APK: $RELEASE_APK"
+            echo "Found Release APK: $RELEASE_APK"
             cp "$RELEASE_APK" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
             cp "$RELEASE_APK" "output_apk/JLPT_N3_Burmese_Vocab.apk"
           fi
 
-          # 2. Locate freshly built Debug APK
-          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" -type f 2>/dev/null | head -n 1)
           if [ -n "$DEBUG_APK" ] && [ -f "$DEBUG_APK" ]; then
-            echo "Found freshly built Debug APK: $DEBUG_APK"
+            echo "Found Debug APK: $DEBUG_APK"
             cp "$DEBUG_APK" "output_apk/KanjiKotoba-${TAG_NAME}-debug.apk"
-            # If no release APK was created, debug APK serves as standard install APK
             if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
               cp "$DEBUG_APK" "output_apk/JLPT_N3_Burmese_Vocab.apk"
               cp "$DEBUG_APK" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
             fi
           fi
 
-          # 3. Fallback to repository APKs if no new APK was built
-          if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
-            echo "Using production APK from apk/ directory..."
-            if [ -f "apk/JLPT_N3_Burmese_Vocab.apk" ]; then
-              cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
-              cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
-            elif [ -f "apk/KanjiKotoba-v1.1-release.apk" ]; then
-              cp "apk/KanjiKotoba-v1.1-release.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
-              cp "apk/KanjiKotoba-v1.1-release.apk" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
-            fi
+          # Fallback to pre-built apk if needed
+          if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ] && [ -f "apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+            echo "Falling back to repository APK..."
+            cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
+            cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
           fi
 
-          echo "Generated APK files in output_apk/:"
+          echo "Output APK list:"
           ls -lh output_apk/
           if [ ! -s "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
-            echo "Error: No APK file available in output_apk/"
+            echo "Error: No APK file was generated!"
             exit 1
           fi
+
+          # Generate SHA256 Checksums
+          cd output_apk
+          sha256sum *.apk > sha256_checksums.txt
+          cat sha256_checksums.txt
+          cd ..
 
       - name: Upload APKs as Workflow Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: KanjiKotoba-APKs-${{ env.TAG_NAME }}
-          path: output_apk/*.apk
-          retention-days: 30
+          path: output_apk/*
+          retention-days: 60
           if-no-files-found: error
 
-      - name: Publish GitHub Release & Tag New Version
+      - name: Publish GitHub Release
         if: env.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         continue-on-error: true
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_TITLE }}
-          files: output_apk/*.apk
+          files: output_apk/*
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.is_draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.is_prerelease || false }}
           generate_release_notes: true
           body: |
-            ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
+            ## 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
 
-            **Version Tag:** `${{ env.TAG_NAME }}`  
-            **Build Commit:** `${{ github.sha }}`
-
-            ---
-
-            ### 📲 Download APK
-            - **Production Release**: `KanjiKotoba-${{ env.TAG_NAME }}-release.apk`
-            - **Standard Direct Install**: `JLPT_N3_Burmese_Vocab.apk`
-            - **Debug APK**: `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
+            **Release Version:** `${{ env.TAG_NAME }}`
+            **Commit:** `${{ github.sha }}`
 
             ---
 
-            ### 🌟 Key Highlights & Features
-            - **မေးခွန်းဟောင်းများ (2014-2025 Past Exam Questions)**: 1,357 real JLPT N3 Vocabulary & Kanji questions across 20 exam sessions with exact Myanmar/Burmese translations.
-            - **Past Exam Sections**: Dedicated tabs for **Kotoba (語彙)**, **Kanji (漢字)**, and **3D Flashcards (ကတ်ပြား)** with session filters (2014/12 to 2025/12).
-            - **Modern Clean Card Design**: Dynamic color accents, real-time drag border glows (Green for Good, Orange for Again, Blue for Flip), and real past exam sentence contexts.
-            - **Smart Shuffle System**: 4 study shuffle modes including **Smart SRS Shuffle (မေးခွန်းခက် ဦးစားပေး)**, **Difficult Only Drill**, **Random Shuffle**, and original **Exam Chronological Order**.
-            - **Customizable 3D Flashcard Gestures**: 4 interactive gesture modes — **Swipe SRS**, **Slide Carousel**, **Vertical 3D Flip**, and **Tap Only** with camera distance perspective and spring physics.
-            - **Daily Quiz Streak Tracking**: Real-time streak tracking calculated from quiz history with a midnight grace period.
-            - **Profile Streak Badges**: Prominent flame badge in the profile header with 7-day activity calendar dialog.
-            - **Japanese Text-To-Speech (TTS)**: Pronounce Kanji, readings, vocabulary, collocations, and example sentences.
-            - **Spaced Repetition (SRS)**: SM-2 spaced repetition algorithm for long-term memory retention.
-            - **100% Offline Ready**: All vocabulary, past exams, and Burmese translations stored locally in Room SQLite.
+            ### 📲 Downloads
+            * **Recommended (Direct Install):** `JLPT_N3_Burmese_Vocab.apk`
+            * **Production Release:** `KanjiKotoba-${{ env.TAG_NAME }}-release.apk`
+            * **Debug APK:** `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
+            * **Checksums:** `sha256_checksums.txt`
+
+            ---
+
+            ### ✨ အဓိက ပါဝင်သော အချက်များ (Key Features)
+            * **ဝေါဟာရ ၄,၅၈၄ ခု အပြည့်အစုံ:** JLPT N3 စာမေးပွဲအတွက် လိုအပ်သော Kanji, Kotoba, အဓိပ္ပာယ် နှင့် အသံထွက် ၄,၅၈၄ ခု အားလုံး ပါဝင်ပါသည်။
+            * **စစ်မှန်သော မေးခွန်းဟောင်းများ (2014-2025):** ၁,၃၅၇ ခုသော မေးခွန်းဟောင်းများကို မြန်မာဘာသာပြန်နှင့်တကွ လေ့ကျင့်နိုင်ပါသည်။
+            * **3D Flashcards & Interactive Gestures:** Flip, Swipe, နှင့် Smooth Carousel အမူအရာများဖြင့် လေ့လာနိုင်ပါသည်။
+            * **Daily Quiz & Streak Tracking:** နေ့စဉ် Quiz လေ့ကျင့်မှုနှင့် Streak စနစ် ပါဝင်ပါသည်။
+            * **100% Offline Ready:** အင်တာနက်မလိုဘဲ ဖုန်းထဲတွင် တိုက်ရိုက် လေ့လာမှတ်သားနိုင်ပါသည်။
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Summary
+      - name: Build Summary Output
         run: |
-          echo "### 🚀 Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version Tag**: \`${{ env.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **APKs generated**: " >> $GITHUB_STEP_SUMMARY
-          ls -1 output_apk/*.apk | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Build & Release Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: \`${{ env.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "### Generated APKs:" >> $GITHUB_STEP_SUMMARY
+          ls -lh output_apk/*.apk | awk '{print "- **" $9 "** (" $5 ")"}' >> $GITHUB_STEP_SUMMARY

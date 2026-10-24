@@ -14,11 +14,15 @@ import com.example.data.model.UserProfile
 import com.example.data.model.VocabCard
 import com.example.data.srs.ReviewRating
 import com.example.data.srs.SpacedRepetitionEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 class VocabRepository(
@@ -27,40 +31,52 @@ class VocabRepository(
     private val quizDao: QuizDao,
     private val srsReviewDao: SrsReviewDao? = null
 ) {
-    suspend fun ensureDataSeeded(forceRefresh: Boolean = false) {
-        try {
-            val count = vocabDao.getCardCount()
-            val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
-            if (forceRefresh) {
-                vocabDao.clearNonCustomCards()
-                allCards.chunked(100).forEach { chunk ->
-                    vocabDao.insertCards(chunk)
+    companion object {
+        private val seedMutex = Mutex()
+        @Volatile
+        private var isSeeded = false
+    }
+
+    suspend fun ensureDataSeeded(forceRefresh: Boolean = false) = withContext(Dispatchers.IO) {
+        seedMutex.withLock {
+            try {
+                val currentCount = vocabDao.getCardCount()
+                val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
+
+                if (forceRefresh) {
+                    vocabDao.clearNonCustomCards()
+                    allCards.chunked(150).forEach { chunk ->
+                        vocabDao.insertCards(chunk)
+                    }
+                    isSeeded = true
+                } else if (currentCount < allCards.size || !isSeeded) {
+                    // Safe non-destructive insert: OnConflictStrategy.IGNORE retains all existing cards and user progress
+                    allCards.chunked(150).forEach { chunk ->
+                        vocabDao.insertCards(chunk)
+                    }
+                    isSeeded = true
                 }
-            } else if (count < allCards.size) {
-                // Safe non-destructive insert: OnConflictStrategy.IGNORE retains all existing cards and user progress
-                allCards.chunked(100).forEach { chunk ->
-                    vocabDao.insertCards(chunk)
-                }
-            }
-            val profile = userProfileDao.getProfile().firstOrNull()
-            if (profile == null) {
-                userProfileDao.insertProfile(
-                    UserProfile(
-                        id = 1,
-                        name = "JLPT N3 Scholar",
-                        targetJlptLevel = "N3",
-                        dailyGoal = 15,
-                        totalXp = 0,
-                        currentStreak = 1,
-                        bestStreak = 1,
-                        lastStudyDate = System.currentTimeMillis()
+
+                val profile = userProfileDao.getProfile().firstOrNull()
+                if (profile == null) {
+                    userProfileDao.insertProfile(
+                        UserProfile(
+                            id = 1,
+                            name = "JLPT N3 Scholar",
+                            targetJlptLevel = "N3",
+                            dailyGoal = 15,
+                            totalXp = 0,
+                            currentStreak = 1,
+                            bestStreak = 1,
+                            lastStudyDate = System.currentTimeMillis()
+                        )
                     )
-                )
-            } else {
-                syncDailyStreak()
+                } else {
+                    syncDailyStreak()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("VocabRepository", "Error in ensureDataSeeded: ${e.message}", e)
             }
-        } catch (e: Exception) {
-            android.util.Log.e("VocabRepository", "Error in ensureDataSeeded: ${e.message}", e)
         }
     }
 

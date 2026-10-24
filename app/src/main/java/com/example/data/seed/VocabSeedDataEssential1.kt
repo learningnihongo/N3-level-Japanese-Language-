@@ -13,10 +13,10 @@ object VocabSeedDataEssential1 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataEssential1 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 100 (28 items)
         card(3001L, 100, "第100課 計画・事柄・交通 (Foresight & Affairs)", "N3 漢字言葉: 予・事・両・再・交 (Planning & Interactions)", "予報", "よほう", "မိုးလေ၀သခန့်မှန်းချက်", "名詞", "予報の使い方や意味をしっかり確認して復習しましょう。", "予報 ၏ အဓိပ္ပာယ်မှာ 'မိုးလေ၀သခန့်မှန်းချက်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson100")
         card(3002L, 100, "第100課 計画・事柄・交通 (Foresight & Affairs)", "N3 漢字言葉: 予・事・両・再・交 (Planning & Interactions)", "予定", "よてい", "အစီအစဉ်", "名詞", "予定の使い方や意味をしっかり確認して復習しましょう。", "予定 ၏ အဓိပ္ပာယ်မှာ 'အစီအစဉ်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson100")
         card(3003L, 100, "第100課 計画・事柄・交通 (Foresight & Affairs)", "N3 漢字言葉: 予・事・両・再・交 (Planning & Interactions)", "予想", "よそう", "ကြိုတင်ခန့်မှန်းချက်", "名詞", "予想の使い方や意味をしっかり確認して復習しましょう。", "予想 ၏ အဓိပ္ပာယ်မှာ 'ကြိုတင်ခန့်မှန်းချက်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson100")
@@ -64,8 +63,6 @@ object VocabSeedDataEssential1 {
         card(3026L, 100, "第100課 計画・事柄・交通 (Foresight & Affairs)", "N3 漢字言葉: 予・事・両・再・交 (Planning & Interactions)", "高齢", "こうれい", "သက်ကြီးရွယ်အို", "名詞", "高齢の使い方や意味をしっかり確認して復習しましょう。", "高齢 ၏ အဓိပ္ပာယ်မှာ 'သက်ကြီးရွယ်အို' ဖြစ်သည်။", "EssentialKanji, N3, Lesson100")
         card(3027L, 100, "第100課 計画・事柄・交通 (Foresight & Affairs)", "N3 漢字言葉: 予・事・両・再・交 (Planning & Interactions)", "高速道路", "こうそくどうろ", "အမြန်လမ်းမကြီး", "名詞", "高速道路の使い方や意味をしっかり確認して復習しましょう。", "高速道路 ၏ အဓိပ္ပာယ်မှာ 'အမြန်လမ်းမကြီး' ဖြစ်သည်။", "EssentialKanji, N3, Lesson100")
         card(3028L, 100, "第100課 計画・事柄・交通 (Foresight & Affairs)", "N3 漢字言葉: 予・事・両・再・交 (Planning & Interactions)", "乗馬", "じょうば", "မြင်းစီးခြင်း", "名詞", "乗馬の使い方や意味をしっかり確認して復習しましょう。", "乗馬 ၏ အဓိပ္ပာယ်မှာ 'မြင်းစီးခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson100")
-
-        // Lesson 101 (28 items)
         card(3029L, 101, "第101課 乗車・価格・役割 (Transit, Value & Roles)", "N3 漢字言葉: 乗・信・個・値・役 (Transit & Roles)", "乗車券", "じょうしゃけん", "ယာဉ်စီးလက်မှတ်", "名詞", "乗車券の使い方や意味をしっかり確認して復習しましょう。", "乗車券 ၏ အဓိပ္ပာယ်မှာ 'ယာဉ်စီးလက်မှတ်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson101")
         card(3030L, 101, "第101課 乗車・価格・役割 (Transit, Value & Roles)", "N3 漢字言葉: 乗・信・個・値・役 (Transit & Roles)", "乗り換える", "のりかえる", "ပြောင်းစီးသည်", "動詞", "乗り換えるの使い方や意味をしっかり確認して復習しましょう。", "乗り換える ၏ အဓိပ္ပာယ်မှာ 'ပြောင်းစီးသည်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson101")
         card(3031L, 101, "第101課 乗車・価格・役割 (Transit, Value & Roles)", "N3 漢字言葉: 乗・信・個・値・役 (Transit & Roles)", "信号", "しんごう", "မီးပွိုင့်", "名詞", "信号の使い方や意味をしっかり確認して復習しましょう。", "信号 ၏ အဓိပ္ပာယ်မှာ 'မီးပွိုင့်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson101")

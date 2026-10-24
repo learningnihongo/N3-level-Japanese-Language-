@@ -13,10 +13,10 @@ object VocabSeedDataEssential7 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataEssential7 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 113 (29 items)
         card(3375L, 113, "第113課 書類・時間・案内 (Documents, Timing & Guidance)", "N3 漢字言葉: 書・最・期・本・横・機 (Documents & Guidance)", "禁煙", "きんえん", "ဆေးလိပ်မသောက်ရ", "名詞", "禁煙の使い方や意味をしっかり確認して復習しましょう。", "禁煙 ၏ အဓိပ္ပာယ်မှာ 'ဆေးလိပ်မသောက်ရ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson113")
         card(3376L, 113, "第113課 書類・時間・案内 (Documents, Timing & Guidance)", "N3 漢字言葉: 書・最・期・本・横・機 (Documents & Guidance)", "書留", "かきとめ", "မှတ်ပုံတင်စာ", "名詞", "書留の使い方や意味をしっかり確認して復習しましょう。", "書留 ၏ အဓိပ္ပာယ်မှာ 'မှတ်ပုံတင်စာ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson113")
         card(3377L, 113, "第113課 書類・時間・案内 (Documents, Timing & Guidance)", "N3 漢字言葉: 書・最・期・本・横・機 (Documents & Guidance)", "書類", "しょるい", "စာရွက်စာတမ်း", "名詞", "書類の使い方や意味をしっかり確認して復習しましょう。", "書類 ၏ အဓိပ္ပာယ်မှာ 'စာရွက်စာတမ်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson113")
@@ -65,8 +64,6 @@ object VocabSeedDataEssential7 {
         card(3401L, 113, "第113課 書類・時間・案内 (Documents, Timing & Guidance)", "N3 漢字言葉: 書・最・期・本・横・機 (Documents & Guidance)", "料理酒", "りょうりしゅ", "ဟင်းချက်အရက်", "名詞", "料理酒の使い方や意味をしっかり確認して復習しましょう。", "料理酒 ၏ အဓိပ္ပာယ်မှာ 'ဟင်းချက်အရက်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson113")
         card(3402L, 113, "第113課 書類・時間・案内 (Documents, Timing & Guidance)", "N3 漢字言葉: 書・最・期・本・横・機 (Documents & Guidance)", "普通", "ふつう(の)", "ပုံမှန်၊ ရိုးရိုး", "名詞", "普通の使い方や意味をしっかり確認して復習しましょう。", "普通 ၏ အဓိပ္ပာယ်မှာ 'ပုံမှန်၊ ရိုးရိုး' ဖြစ်သည်။", "EssentialKanji, N3, Lesson113")
         card(3403L, 113, "第113課 書類・時間・案内 (Documents, Timing & Guidance)", "N3 漢字言葉: 書・最・期・本・横・機 (Documents & Guidance)", "科学", "かがく", "သိပ္ပံဘာသာ", "名詞", "科学の使い方や意味をしっかり確認して復習しましょう。", "科学 ၏ အဓိပ္ပာယ်မှာ 'သိပ္ပံဘာသာ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson113")
-
-        // Lesson 114 (29 items)
         card(3404L, 114, "第114課 経済・約束・上達 (Economy, Commitments & Progress)", "N3 漢字言葉: 税・約・経・結・新・上 (Economy & Progress)", "移動", "いどう", "ရွှေ့ပြောင်းခြင်း၊ နေရာပြောင်းခြင်း", "名詞", "移動の使い方や意味をしっかり確認して復習しましょう。", "移動 ၏ အဓိပ္ပာယ်မှာ 'ရွှေ့ပြောင်းခြင်း၊ နေရာပြောင်းခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson114")
         card(3405L, 114, "第114課 経済・約束・上達 (Economy, Commitments & Progress)", "N3 漢字言葉: 税・約・経・結・新・上 (Economy & Progress)", "税務署", "ぜいむしょ", "အခွန်ရုံး", "名詞", "税務署の使い方や意味をしっかり確認して復習しましょう。", "税務署 ၏ အဓိပ္ပာယ်မှာ 'အခွန်ရုံး' ဖြစ်သည်။", "EssentialKanji, N3, Lesson114")
         card(3406L, 114, "第114課 経済・約束・上達 (Economy, Commitments & Progress)", "N3 漢字言葉: 税・約・経・結・新・上 (Economy & Progress)", "税込み", "ぜいこみ", "အခွန်ပါပြီး", "名詞", "税込みの使い方や意味をしっかり確認して復習しましょう。", "税込み ၏ အဓိပ္ပာယ်မှာ 'အခွန်ပါပြီး' ဖြစ်သည်။", "EssentialKanji, N3, Lesson114")
@@ -96,8 +93,6 @@ object VocabSeedDataEssential7 {
         card(3430L, 114, "第114課 経済・約束・上達 (Economy, Commitments & Progress)", "N3 漢字言葉: 税・約・経・結・新・上 (Economy & Progress)", "新婚旅行", "しんこんりょこう", "ဟန်းနီးမွန်းခရီး", "名詞", "新婚旅行の使い方や意味をしっかり確認して復習しましょう。", "新婚旅行 ၏ အဓိပ္ပာယ်မှာ 'ဟန်းနီးမွန်းခရီး' ဖြစ်သည်။", "EssentialKanji, N3, Lesson114")
         card(3431L, 114, "第114課 経済・約束・上達 (Economy, Commitments & Progress)", "N3 漢字言葉: 税・約・経・結・新・上 (Economy & Progress)", "断水", "だんすい", "ရေပြတ်တောက်ခြင်း", "名詞", "断水の使い方や意味をしっかり確認して復習しましょう。", "断水 ၏ အဓိပ္ပာယ်မှာ 'ရေပြတ်တောက်ခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson114")
         card(3432L, 114, "第114課 経済・約束・上達 (Economy, Commitments & Progress)", "N3 漢字言葉: 税・約・経・結・新・上 (Economy & Progress)", "上級", "じょうきゅう", "အထက်တန်းအဆင့်", "名詞", "上級の使い方や意味をしっかり確認して復習しましょう。", "上級 ၏ အဓိပ္ပာယ်မှာ 'အထက်တန်းအဆင့်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson114")
-
-        // Lesson 115 (29 items)
         card(3433L, 115, "第115課 正確・健康・申請 (Accuracy, Health & Applications)", "N3 漢字言葉: 正・歯・無・現・申・番 (Accuracy & Applications)", "上達", "じょうたつ", "တော်လာ၊ တိုးတက်လာခြင်း (အရည်အချင်း)", "名詞", "上達の使い方や意味をしっかり確認して復習しましょう。", "上達 ၏ အဓိပ္ပာယ်မှာ 'တော်လာ၊ တိုးတက်လာခြင်း (အရည်အချင်း)' ဖြစ်သည်။", "EssentialKanji, N3, Lesson115")
         card(3434L, 115, "第115課 正確・健康・申請 (Accuracy, Health & Applications)", "N3 漢字言葉: 正・歯・無・現・申・番 (Accuracy & Applications)", "正常", "せいじょう(な)", "ပုံမှန်ဖြစ်သော", "形容動詞", "正常の使い方や意味をしっかり確認して復習しましょう。", "正常 ၏ အဓိပ္ပာယ်မှာ 'ပုံမှန်ဖြစ်သော' ဖြစ်သည်။", "EssentialKanji, N3, Lesson115")
         card(3435L, 115, "第115課 正確・健康・申請 (Accuracy, Health & Applications)", "N3 漢字言葉: 正・歯・無・現・申・番 (Accuracy & Applications)", "正座", "せいざ", "ဂျပန်ယဉ်ကျေးမှု့ပုံစံဖြင့်ပုဆစ်တုပ်ထိုင်ခြင်း", "名詞", "正座の使い方や意味をしっかり確認して復習しましょう。", "正座 ၏ အဓိပ္ပာယ်မှာ 'ဂျပန်ယဉ်ကျေးမှု့ပုံစံဖြင့်ပုဆစ်တုပ်ထိုင်ခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson115")

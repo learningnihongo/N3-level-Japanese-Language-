@@ -255,6 +255,313 @@ object SeedData {
                 KanjiExample("広場", "ひろば", "ရင်ပြင်"),
                 KanjiExample("広告", "こうこく", "ကြော်ငြာ")
             )
+        ),
+        KanjiItem(
+            id = 19,
+            kanji = "求",
+            onyomi = "キュウ",
+            kunyomi = "もと・める",
+            meaningBurmese = "တောင်းဆိုသည်၊ ရှာဖွေလိုလားသည်",
+            meaningEnglish = "Request, Seek, Demand",
+            strokeCount = 7,
+            examples = listOf(
+                KanjiExample("要求", "ようきゅう", "တောင်းဆိုချက်"),
+                KanjiExample("請求", "せいきゅう", "ငွေတောင်းခံလွှာ"),
+                KanjiExample("求める", "もとめる", "ရှာဖွေလိုလားသည်")
+            )
+        ),
+        KanjiItem(
+            id = 20,
+            kanji = "協",
+            onyomi = "キョウ",
+            kunyomi = "-",
+            meaningBurmese = "ပူးပေါင်းဆောင်ရွက်သည်၊ ညီညွတ်သည်",
+            meaningEnglish = "Cooperation, Harmonize",
+            strokeCount = 8,
+            examples = listOf(
+                KanjiExample("協力", "きょうりょく", "ပူးပေါင်းဆောင်ရွက်မှု"),
+                KanjiExample("協会", "きょうかい", "အသင်းအဖွဲ့"),
+                KanjiExample("妥協", "だきょう", "အပြန်အလှန်လိုက်လျောမှု")
+            )
+        ),
+        KanjiItem(
+            id = 21,
+            kanji = "存",
+            onyomi = "ゾン, ソン",
+            kunyomi = "-",
+            meaningBurmese = "တည်ရှိသည်၊ အသက်ရှင်သည်၊ သိရှိသည်",
+            meaningEnglish = "Exist, Be aware of, Preserve",
+            strokeCount = 6,
+            examples = listOf(
+                KanjiExample("存在", "そんざい", "တည်ရှိမှု"),
+                KanjiExample("保存", "ほぞん", "သိမ်းဆည်းထိန်းသိမ်းမှု"),
+                KanjiExample("ご存知", "ごぞんじ", "သိရှိတော်မူသော")
+            )
+        ),
+        KanjiItem(
+            id = 22,
+            kanji = "認",
+            onyomi = "ニン",
+            kunyomi = "みと・める",
+            meaningBurmese = "အသိအမှတ်ပြုသည်၊ ဝန်ခံလက်ခံသည်",
+            meaningEnglish = "Recognize, Acknowledge, Approve",
+            strokeCount = 14,
+            examples = listOf(
+                KanjiExample("確認", "かくにん", "စစ်ဆေးအတည်ပြုခြင်း"),
+                KanjiExample("認める", "みとめる", "ဝန်ခံလက်ခံသည်"),
+                KanjiExample("認識", "にんしき", "နားလည်သဘောပေါက်မှု")
+            )
+        ),
+        KanjiItem(
+            id = 23,
+            kanji = "導",
+            onyomi = "ドウ",
+            kunyomi = "みちび・く",
+            meaningBurmese = "လမ်းညွှန်သည်၊ မိတ်ဆက်ခေါ်ဆောင်သည်",
+            meaningEnglish = "Guide, Lead, Conduct",
+            strokeCount = 15,
+            examples = listOf(
+                KanjiExample("導入", "どうにゅう", "စတင်မိတ်ဆက်အသုံးပြုခြင်း"),
+                KanjiExample("指導", "しどう", "လမ်းညွှန်သင်ကြားမှု"),
+                KanjiExample("導く", "みちびく", "လမ်းပြခေါ်ဆောင်သည်")
+            )
+        ),
+        KanjiItem(
+            id = 24,
+            kanji = "確",
+            onyomi = "カク",
+            kunyomi = "たし・か, たし・かめる",
+            meaningBurmese = "သေချာခိုင်မာသော၊ စစ်ဆေးသည်",
+            meaningEnglish = "Certain, Firm, Confirm",
+            strokeCount = 15,
+            examples = listOf(
+                KanjiExample("確認", "かくにん", "အတည်ပြုစစ်ဆေးခြင်း"),
+                KanjiExample("確かめる", "たしかめる", "သေချာအောင်စစ်ဆေးသည်"),
+                KanjiExample("正確", "せいかく", "တိကျမှန်ကန်သော")
+            )
+        ),
+        KanjiItem(
+            id = 25,
+            kanji = "実",
+            onyomi = "ジツ",
+            kunyomi = "み, みの・る",
+            meaningBurmese = "အမှန်တကယ်၊ လက်တွေ့၊ အသီးအပွင့်",
+            meaningEnglish = "Reality, Truth, Fruit",
+            strokeCount = 8,
+            examples = listOf(
+                KanjiExample("実現", "じつげん", "လက်တွေ့အကောင်အထည်ဖော်ခြင်း"),
+                KanjiExample("実験", "じっけん", "လက်တွေ့စမ်းသပ်မှု"),
+                KanjiExample("実は", "じつは", "အမှန်အတိုင်းပြောရလျှင်")
+            )
+        ),
+        KanjiItem(
+            id = 26,
+            kanji = "態",
+            onyomi = "タイ",
+            kunyomi = "-",
+            meaningBurmese = "အခြေအနေ၊ အသွင်သဏ္ဌာန်၊ သဘောထား",
+            meaningEnglish = "Condition, Situation, Appearance",
+            strokeCount = 14,
+            examples = listOf(
+                KanjiExample("状態", "じょうたい", "အခြေအနေ"),
+                KanjiExample("態度", "たいど", "သဘောထား/အပြုအမူ"),
+                KanjiExample("事態", "じたい", "အခြေအနေဆိုး")
+            )
+        ),
+        KanjiItem(
+            id = 27,
+            kanji = "規",
+            onyomi = "キ",
+            kunyomi = "-",
+            meaningBurmese = "စည်းမျဉ်း၊ စံသတ်မှတ်ချက်",
+            meaningEnglish = "Standard, Measure, Rule",
+            strokeCount = 11,
+            examples = listOf(
+                KanjiExample("規則", "きそく", "စည်းမျဉ်းစည်းကမ်း"),
+                KanjiExample("規定", "きてい", "ပြဋ္ဌာန်းချက်"),
+                KanjiExample("定規", "じょうぎ", "ပေတံ")
+            )
+        ),
+        KanjiItem(
+            id = 28,
+            kanji = "則",
+            onyomi = "ソク",
+            kunyomi = "-",
+            meaningBurmese = "စည်းကမ်း၊ ဥပဒေသ",
+            meaningEnglish = "Rule, Law, Follow",
+            strokeCount = 9,
+            examples = listOf(
+                KanjiExample("規則", "きそく", "စည်းကမ်း"),
+                KanjiExample("法則", "ほうそく", "သဘာဝဥပဒေသ"),
+                KanjiExample("原則", "げんそく", "အခြေခံမူ")
+            )
+        ),
+        KanjiItem(
+            id = 29,
+            kanji = "測",
+            onyomi = "ソク",
+            kunyomi = "はか・る",
+            meaningBurmese = "တိုင်းတာသည်၊ ခန့်မှန်းသည်",
+            meaningEnglish = "Measure, Survey, Fathom",
+            strokeCount = 12,
+            examples = listOf(
+                KanjiExample("測定", "そくてい", "တိုင်းတာခြင်း"),
+                KanjiExample("予測", "よそく", "ကြိုတင်ခန့်မှန်းချက်"),
+                KanjiExample("測る", "はかる", "တိုင်းတာသည်")
+            )
+        ),
+        KanjiItem(
+            id = 30,
+            kanji = "定",
+            onyomi = "テイ, ジョウ",
+            kunyomi = "さだ・める, さだ・まる",
+            meaningBurmese = "သတ်မှတ်သည်၊ ဆုံးဖြတ်အတည်ပြုသည်",
+            meaningEnglish = "Determine, Fix, Settle",
+            strokeCount = 8,
+            examples = listOf(
+                KanjiExample("予定", "よてい", "အစီအစဉ်"),
+                KanjiExample("決定", "けってい", "ဆုံးဖြတ်ချက်"),
+                KanjiExample("定休日", "ていきゅうび", "ပုံမှန်ပိတ်ရက်")
+            )
+        ),
+        KanjiItem(
+            id = 31,
+            kanji = "変",
+            onyomi = "ヘン",
+            kunyomi = "か・わる, か・える",
+            meaningBurmese = "ပြောင်းလဲသည်၊ ထူးဆန်းသော",
+            meaningEnglish = "Change, Unusual, Strange",
+            strokeCount = 9,
+            examples = listOf(
+                KanjiExample("変化", "へんか", "ပြောင်းလဲမှု"),
+                KanjiExample("変更", "へんこう", "ပြင်ဆင်ပြောင်းလဲခြင်း"),
+                KanjiExample("大変", "たいへん", "ခက်ခဲပင်ပန်းသော/အလွန်")
+            )
+        ),
+        KanjiItem(
+            id = 32,
+            kanji = "更",
+            onyomi = "コウ",
+            kunyomi = "ふ・ける, さら",
+            meaningBurmese = "အသစ်လဲလှယ်သည်၊ ပြင်ဆင်သည်",
+            meaningEnglish = "Renew, Change, Further",
+            strokeCount = 7,
+            examples = listOf(
+                KanjiExample("変更", "へんこう", "ပြောင်းလဲခြင်း"),
+                KanjiExample("更新", "こうしん", "သက်တမ်းတိုးခြင်း/အပ်ဒိတ်"),
+                KanjiExample("今更", "いまさら", "ယခုမှစ၍")
+            )
+        ),
+        KanjiItem(
+            id = 33,
+            kanji = "慎",
+            onyomi = "シン",
+            kunyomi = "つつし・む",
+            meaningBurmese = "သတိထားဆင်ခြင်သည်၊ စေ့စပ်သည်",
+            meaningEnglish = "Prudent, Careful, Discreet",
+            strokeCount = 13,
+            examples = listOf(
+                KanjiExample("慎重", "しんちょう", "သတိရှိသော/စေ့စပ်သော"),
+                KanjiExample("慎む", "つつしむ", "ထိန်းသိမ်းဆင်ခြင်သည်")
+            )
+        ),
+        KanjiItem(
+            id = 34,
+            kanji = "重",
+            onyomi = "ジュウ, チョウ",
+            kunyomi = "おも・い, かさ・なる",
+            meaningBurmese = "လေးလံသော၊ အရေးကြီးသော",
+            meaningEnglish = "Heavy, Important, Pile up",
+            strokeCount = 9,
+            examples = listOf(
+                KanjiExample("重要", "じゅうよう", "အရေးကြီးသော"),
+                KanjiExample("体重", "たいじゅう", "ကိုယ်အလေးချိန်"),
+                KanjiExample("重い", "おもい", "လေးလံသော")
+            )
+        ),
+        KanjiItem(
+            id = 35,
+            kanji = "要",
+            onyomi = "ヨウ",
+            kunyomi = "い・る",
+            meaningBurmese = "လိုအပ်သော၊ အရေးပါသော အဓိကအချက်",
+            meaningEnglish = "Require, Essential, Need",
+            strokeCount = 9,
+            examples = listOf(
+                KanjiExample("必要", "ひつよう", "လိုအပ်သော"),
+                KanjiExample("重要", "じゅうよう", "အရေးပါသော"),
+                KanjiExample("要約", "ようやく", "အကျဉ်းချုပ်")
+            )
+        ),
+        KanjiItem(
+            id = 36,
+            kanji = "解",
+            onyomi = "カイ, ゲ",
+            kunyomi = "と・く, と・ける, ほど・く",
+            meaningBurmese = "ဖြေရှင်းသည်၊ နားလည်သဘောပေါက်သည်",
+            meaningEnglish = "Untie, Solve, Understand",
+            strokeCount = 13,
+            examples = listOf(
+                KanjiExample("解決", "かいけつ", "ပြဿနာဖြေရှင်းခြင်း"),
+                KanjiExample("理解", "りかい", "နားလည်သဘောပေါက်မှု"),
+                KanjiExample("解答", "かいとう", "အဖြေပေးခြင်း")
+            )
+        ),
+        KanjiItem(
+            id = 37,
+            kanji = "決",
+            onyomi = "ケツ",
+            kunyomi = "き・める, き・まる",
+            meaningBurmese = "ဆုံးဖြတ်သည်၊ ဆုံးဖြတ်ပြီးစီးသည်",
+            meaningEnglish = "Decide, Determine, Agree",
+            strokeCount = 7,
+            examples = listOf(
+                KanjiExample("決定", "けってい", "ဆုံးဖြတ်ချက်"),
+                KanjiExample("決める", "きめる", "ဆုံးဖြတ်သည်"),
+                KanjiExample("決して", "けっして", "လုံးဝ/ဘယ်သောအခါမှ")
+            )
+        ),
+        KanjiItem(
+            id = 38,
+            kanji = "論",
+            onyomi = "ロン",
+            kunyomi = "-",
+            meaningBurmese = "ဆွေးနွေးငြင်းခုံသည်၊ စာတမ်း၊ သီအိုရီ",
+            meaningEnglish = "Theory, Argument, Essay",
+            strokeCount = 15,
+            examples = listOf(
+                KanjiExample("論文", "ろんぶん", "စာတမ်း/သုတေသန"),
+                KanjiExample("議論", "ぎろん", "ဆွေးနွေးငြင်းခုံမှု"),
+                KanjiExample("結論", "けつろん", "နိဂုံးချုပ်/ကောက်ချက်")
+            )
+        ),
+        KanjiItem(
+            id = 39,
+            kanji = "議",
+            onyomi = "ギ",
+            kunyomi = "-",
+            meaningBurmese = "ဆွေးနွေးတိုင်ပင်သည်၊ ညီလာခံ",
+            meaningEnglish = "Deliberation, Consult, Debate",
+            strokeCount = 20,
+            examples = listOf(
+                KanjiExample("会議", "かいぎ", "အစည်းအဝေး"),
+                KanjiExample("議員", "ぎいん", "လွှတ်တော်အမတ်"),
+                KanjiExample("不思議", "ふしぎ", "အံ့ဩဖွယ်ရာ/ထူးဆန်းသော")
+            )
+        ),
+        KanjiItem(
+            id = 40,
+            kanji = "団",
+            onyomi = "ダン, トン",
+            kunyomi = "-",
+            meaningBurmese = "အဖွဲ့အစည်း၊ အစုအဖွဲ့",
+            meaningEnglish = "Group, Organization, Association",
+            strokeCount = 6,
+            examples = listOf(
+                KanjiExample("団体", "だんたい", "အဖွဲ့အစည်း"),
+                KanjiExample("集団", "しゅうだん", "လူစုလူဝေး"),
+                KanjiExample("団結", "だんけつ", "စည်းလုံးညီညွတ်မှု")
+            )
         )
     )
 

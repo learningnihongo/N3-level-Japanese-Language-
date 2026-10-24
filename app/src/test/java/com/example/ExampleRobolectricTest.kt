@@ -309,5 +309,19 @@ class ExampleRobolectricTest {
     assertEquals(880, com.example.ui.screens.KanjiGoalType.TOTAL_APP_VOCAB.defaultGoal)
     assertTrue(com.example.ui.screens.KanjiGoalType.STANDARD_N3_KANJI.description.contains("၆၅၀"))
   }
+
+  @Test
+  fun `verify full dataset restoration has exactly 4584 cards and unique IDs`() {
+    val allCards = com.example.data.seed.VocabSeedDataApplied.getAllSeedCards()
+    assertEquals(4584, allCards.size)
+    val uniqueIds = allCards.map { it.id }.toSet()
+    assertEquals(4584, uniqueIds.size)
+    allCards.forEach { card ->
+      assertTrue("Card id ${card.id} must have kanji", card.kanji.isNotBlank())
+      assertTrue("Card id ${card.id} must have reading", card.reading.isNotBlank())
+      assertTrue("Card id ${card.id} must have meaningBurmese", card.meaningBurmese.isNotBlank())
+    }
+  }
 }
+
 

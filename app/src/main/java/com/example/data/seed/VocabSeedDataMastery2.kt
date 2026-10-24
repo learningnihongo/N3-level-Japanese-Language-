@@ -13,10 +13,10 @@ object VocabSeedDataMastery2 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataMastery2 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 123 (28 items)
         card(4082L, 123, "第123課 職場・製造・仕事能力 (Workplace & Capability)", "Mastery: 職場・製品・能力・仕事 (Workplace & Capability)", "出張", "しゅっちょう", "အလုပ်ခရီး", "名詞", "出張の使い方や意味をしっかり確認して復習しましょう。", "出張 ၏ အဓိပ္ပာယ်မှာ 'အလုပ်ခရီး' ဖြစ်သည်။", "MasteryKanji, N3, Lesson123")
         card(4083L, 123, "第123課 職場・製造・仕事能力 (Workplace & Capability)", "Mastery: 職場・製品・能力・仕事 (Workplace & Capability)", "欠席", "けっせき", "ပျက်ကွက်ခြင်း", "名詞", "欠席の使い方や意味をしっかり確認して復習しましょう。", "欠席 ၏ အဓိပ္ပာယ်မှာ 'ပျက်ကွက်ခြင်း' ဖြစ်သည်။", "MasteryKanji, N3, Lesson123")
         card(4084L, 123, "第123課 職場・製造・仕事能力 (Workplace & Capability)", "Mastery: 職場・製品・能力・仕事 (Workplace & Capability)", "工場", "こうじょう", "စက်ရုံ", "名詞", "工場の使い方や意味をしっかり確認して復習しましょう。", "工場 ၏ အဓိပ္ပာယ်မှာ 'စက်ရုံ' ဖြစ်သည်။", "MasteryKanji, N3, Lesson123")
@@ -64,8 +63,6 @@ object VocabSeedDataMastery2 {
         card(4107L, 123, "第123課 職場・製造・仕事能力 (Workplace & Capability)", "Mastery: 職場・製品・能力・仕事 (Workplace & Capability)", "反対", "はんたい", "ဆန့်ကျင်ခြင်း", "名詞", "反対の使い方や意味をしっかり確認して復習しましょう。", "反対 ၏ အဓိပ္ပာယ်မှာ 'ဆန့်ကျင်ခြင်း' ဖြစ်သည်။", "MasteryKanji, N3, Lesson123")
         card(4108L, 123, "第123課 職場・製造・仕事能力 (Workplace & Capability)", "Mastery: 職場・製品・能力・仕事 (Workplace & Capability)", "必要な", "ひつような", "လိုအပ်သော", "形容動詞", "必要の使い方や意味をしっかり確認して復習しましょう。", "必要な ၏ အဓိပ္ပာယ်မှာ 'လိုအပ်သော' ဖြစ်သည်။", "MasteryKanji, N3, Lesson123")
         card(4109L, 123, "第123課 職場・製造・仕事能力 (Workplace & Capability)", "Mastery: 職場・製品・能力・仕事 (Workplace & Capability)", "面倒", "めんどう", "စိတ်ရှုပ်ဖို့ကောင်းသော", "形容動詞", "面倒の使い方や意味をしっかり確認して復習しましょう。", "面倒 ၏ အဓိပ္ပာယ်မှာ 'စိတ်ရှုပ်ဖို့ကောင်းသော' ဖြစ်သည်။", "MasteryKanji, N3, Lesson123")
-
-        // Lesson 124 (28 items)
         card(4110L, 124, "第124課 計画・医療・態度 (Plans, Healthcare & Attitude)", "Mastery: 計画・健康・態度・責任 (Healthcare & Attitude)", "健康診断", "けんこうしんだん", "ကျန်းမာရေးစစ်ဆေးမှု", "名詞", "健康診断の使い方や意味をしっかり確認して復習しましょう。", "健康診断 ၏ အဓိပ္ပာယ်မှာ 'ကျန်းမာရေးစစ်ဆေးမှု' ဖြစ်သည်။", "MasteryKanji, N3, Lesson124")
         card(4111L, 124, "第124課 計画・医療・態度 (Plans, Healthcare & Attitude)", "Mastery: 計画・健康・態度・責任 (Healthcare & Attitude)", "寝坊", "ねぼう", "အိပ်ပုတ်ကြီးခြင်း", "名詞", "寝坊の使い方や意味をしっかり確認して復習しましょう。", "寝坊 ၏ အဓိပ္ပာယ်မှာ 'အိပ်ပုတ်ကြီးခြင်း' ဖြစ်သည်။", "MasteryKanji, N3, Lesson124")
         card(4112L, 124, "第124課 計画・医療・態度 (Plans, Healthcare & Attitude)", "Mastery: 計画・健康・態度・責任 (Healthcare & Attitude)", "残念な", "ざんねんな", "စိတ်မကောင်းသော", "形容動詞", "残念の使い方や意味をしっかり確認して復習しましょう。", "残念な ၏ အဓိပ္ပာယ်မှာ 'စိတ်မကောင်းသော' ဖြစ်သည်။", "MasteryKanji, N3, Lesson124")
@@ -94,8 +91,6 @@ object VocabSeedDataMastery2 {
         card(4135L, 124, "第124課 計画・医療・態度 (Plans, Healthcare & Attitude)", "Mastery: 計画・健康・態度・責任 (Healthcare & Attitude)", "天気予報", "てんきよほう", "မိုးလေဝသခန့်မှန်းချက်", "名詞", "天気予報の使い方や意味をしっかり確認して復習しましょう。", "天気予報 ၏ အဓိပ္ပာယ်မှာ 'မိုးလေဝသခန့်မှန်းချက်' ဖြစ်သည်။", "MasteryKanji, N3, Lesson124")
         card(4136L, 124, "第124課 計画・医療・態度 (Plans, Healthcare & Attitude)", "Mastery: 計画・健康・態度・責任 (Healthcare & Attitude)", "全国的", "ぜんこくてき", "တစ်နိုင်ငံလုံးအတိုင်းအတာဖြင့်", "形容動詞", "全国的の使い方や意味をしっかり確認して復習しましょう。", "全国的 ၏ အဓိပ္ပာယ်မှာ 'တစ်နိုင်ငံလုံးအတိုင်းအတာဖြင့်' ဖြစ်သည်။", "MasteryKanji, N3, Lesson124")
         card(4137L, 124, "第124課 計画・医療・態度 (Plans, Healthcare & Attitude)", "Mastery: 計画・健康・態度・責任 (Healthcare & Attitude)", "足の裏", "あしのうら", "ခြေဖဝါး", "名詞", "足の裏の使い方や意味をしっかり確認して復習しましょう。", "足の裏 ၏ အဓိပ္ပာယ်မှာ 'ခြေဖဝါး' ဖြစ်သည်။", "MasteryKanji, N3, Lesson124")
-
-        // Lesson 125 (28 items)
         card(4138L, 125, "第125課 挑戦・意見・生活習慣 (Challenge & Daily Habits)", "Mastery: 挑戦・対話・生活習慣 (Challenge & Habits)", "珍しい", "めずらしい", "ရှားပါးသော", "形容動詞", "珍しいの使い方や意味をしっかり確認して復習しましょう。", "珍しい ၏ အဓိပ္ပာယ်မှာ 'ရှားပါးသော' ဖြစ်သည်။", "MasteryKanji, N3, Lesson125")
         card(4139L, 125, "第125課 挑戦・意見・生活習慣 (Challenge & Daily Habits)", "Mastery: 挑戦・対話・生活習慣 (Challenge & Habits)", "地域", "ちいき", "ဧရိယာ", "名詞", "地域の使い方や意味をしっかり確認して復習しましょう。", "地域 ၏ အဓိပ္ပာယ်မှာ 'ဧရိယာ' ဖြစ်သည်။", "MasteryKanji, N3, Lesson125")
         card(4140L, 125, "第125課 挑戦・意見・生活習慣 (Challenge & Daily Habits)", "Mastery: 挑戦・対話・生活習慣 (Challenge & Habits)", "国家試験", "こっかしけん", "အစိုးရစာမေးပွဲ", "名詞", "国家試験の使い方や意味をしっかり確認して復習しましょう。", "国家試験 ၏ အဓိပ္ပာယ်မှာ 'အစိုးရစာမေးပွဲ' ဖြစ်သည်။", "MasteryKanji, N3, Lesson125")

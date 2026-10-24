@@ -13,10 +13,10 @@ object VocabSeedDataEssential4 {
             kanji: String,
             reading: String,
             burmese: String,
-            pos: String = "名詞",
+            pos: String = "",
             example: String = "",
             exampleBurmese: String = "",
-            tags: String = ""
+            note: String = ""
         ) {
             list.add(
                 VocabCard(
@@ -30,12 +30,11 @@ object VocabSeedDataEssential4 {
                     partOfSpeech = pos,
                     exampleSentence = example,
                     exampleMeaningBurmese = exampleBurmese,
-                    tags = tags
+                    personalNote = note
                 )
             )
         }
 
-        // Lesson 106 (29 items)
         card(3172L, 106, "第106課 単位・社会活動・消費 (Units & Activities)", "N3 漢字言葉: 単・戦・原・参・出・消 (Units & Consumption)", "受験", "じゅけん", "စာမေးပွဲဖြေဆိုခြင်း", "名詞", "受験の使い方や意味をしっかり確認して復習しましょう。", "受験 ၏ အဓိပ္ပာယ်မှာ 'စာမေးပွဲဖြေဆိုခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson106")
         card(3173L, 106, "第106課 単位・社会活動・消費 (Units & Activities)", "N3 漢字言葉: 単・戦・原・参・出・消 (Units & Consumption)", "受取人", "うけとりにん", "လက်ခံသူ", "名詞", "受取人の使い方や意味をしっかり確認して復習しましょう。", "受取人 ၏ အဓိပ္ပာယ်မှာ 'လက်ခံသူ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson106")
         card(3174L, 106, "第106課 単位・社会活動・消費 (Units & Activities)", "N3 漢字言葉: 単・戦・原・参・出・消 (Units & Consumption)", "受け取る", "うけとる", "လက်ခံရရှိသည်", "動詞", "受け取るの使い方や意味をしっかり確認して復習しましょう。", "受け取る ၏ အဓိပ္ပာယ်မှာ 'လက်ခံရရှိသည်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson106")
@@ -65,8 +64,6 @@ object VocabSeedDataEssential4 {
         card(3198L, 106, "第106課 単位・社会活動・消費 (Units & Activities)", "N3 漢字言葉: 単・戦・原・参・出・消 (Units & Consumption)", "消費者", "しょうひしゃ", "စားသုံးသူ", "名詞", "消費者の使い方や意味をしっかり確認して復習しましょう。", "消費者 ၏ အဓိပ္ပာယ်မှာ 'စားသုံးသူ' ဖြစ်သည်။", "EssentialKanji, N3, Lesson106")
         card(3199L, 106, "第106課 単位・社会活動・消費 (Units & Activities)", "N3 漢字言葉: 単・戦・原・参・出・消 (Units & Consumption)", "消防", "しょうぼう", "မီးသတ်", "名詞", "消防の使い方や意味をしっかり確認して復習しましょう。", "消防 ၏ အဓိပ္ပာယ်မှာ 'မီးသတ်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson106")
         card(3200L, 106, "第106課 単位・社会活動・消費 (Units & Activities)", "N3 漢字言葉: 単・戦・原・参・出・消 (Units & Consumption)", "涙を流す", "なみだをながす", "မျက်ရည်ကျသည်", "動詞", "涙を流すの使い方や意味をしっかり確認して復習しましょう。", "涙を流す ၏ အဓိပ္ပာယ်မှာ 'မျက်ရည်ကျသည်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson106")
-
-        // Lesson 107 (29 items)
         card(3201L, 107, "第107課 運行・連絡・移動 (Transit, Contact & Pathways)", "N3 漢字言葉: 満・返・送・通・速・連・道 (Transit & Contact)", "混雑", "こんざつ", "ရှုပ်ထွေး၊ ရှုပ်ယှက်ခတ်သည်", "名詞", "混雑の使い方や意味をしっかり確認して復習しましょう。", "混雑 ၏ အဓိပ္ပာယ်မှာ 'ရှုပ်ထွေး၊ ရှုပ်ယှက်ခတ်သည်' ဖြစ်သည်။", "EssentialKanji, N3, Lesson107")
         card(3202L, 107, "第107課 運行・連絡・移動 (Transit, Contact & Pathways)", "N3 漢字言葉: 満・返・送・通・速・連・道 (Transit & Contact)", "減少", "げんしょう", "လျှော့နည်းခြင်း၊ လျှော့ချခြင်း", "名詞", "減少の使い方や意味をしっかり確認して復習しましょう。", "減少 ၏ အဓိပ္ပာယ်မှာ 'လျှော့နည်းခြင်း၊ လျှော့ချခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson107")
         card(3203L, 107, "第107課 運行・連絡・移動 (Transit, Contact & Pathways)", "N3 漢字言葉: 満・返・送・通・速・連・道 (Transit & Contact)", "減量", "げんりょう", "ပမာဏနည်းခြင်း", "名詞", "減量の使い方や意味をしっかり確認して復習しましょう。", "減量 ၏ အဓိပ္ပာယ်မှာ 'ပမာဏနည်းခြင်း' ဖြစ်သည်။", "EssentialKanji, N3, Lesson107")
