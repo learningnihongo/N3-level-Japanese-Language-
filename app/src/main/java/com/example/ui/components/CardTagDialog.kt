@@ -1,7 +1,6 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -11,26 +10,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,87 +34,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.model.VocabCard
-import com.example.ui.theme.JapaneseCrimson
-import com.example.ui.theme.JapaneseIndigo
-import com.example.ui.theme.PolishPrimary
-import com.example.ui.theme.SakuraPinkDark
 
-// Preset common category tags suggested for JLPT learners
 val DEFAULT_SUGGESTED_TAGS = listOf(
-    "MasteryKanji",
-    "EssentialKanji",
-    "HninPwintNanda",
-    "တိရစ္ဆာန်များ",
-    "Shinkanzen",
-    "時間",
-    "住居",
-    "町・交通",
-    "料理・食事",
-    "人間関係",
-    "美容",
-    "健康",
-    "病気",
-    "スポーツ",
-    "芸術",
-    "ファッション",
-    "旅行",
-    "教育",
-    "仕事",
-    "IT",
-    "社会",
-    "自然",
-    "和語動詞",
-    "漢語動詞",
-    "オノマトペ",
-    "家畜・ペット",
-    "野生動物",
-    "哺乳類",
-    "水生生物・魚類",
-    "鳥類",
-    "昆虫",
-    "爬虫類",
-    "両生類",
-    "生物分類",
+    "JLPT N3",
+    "မေးခွန်းဟောင်း",
+    "ဆင်တူရိုးမှား",
+    "Grammar",
     "Work",
-    "School",
-    "JLPT N3 Grammar",
-    "Daily Life",
-    "Travel",
-    "Business",
-    "Conversation",
-    "Exam Prep",
-    "Priority Review"
+    "Daily",
+    "Weak",
+    "Exam"
 )
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CardTagDialog(
     card: VocabCard,
-    availableTags: List<String> = emptyList(),
+    availableTags: List<String>,
     onDismiss: () -> Unit,
-    onSaveTags: (cardId: Long, tags: List<String>) -> Unit
+    onSaveTags: (cardId: Long, updatedTags: List<String>) -> Unit
 ) {
-    val selectedTags = remember(card) {
-        mutableStateListOf<String>().apply {
-            addAll(card.tagList)
-        }
+    val currentTags = remember(card) {
+        mutableStateListOf<String>().apply { addAll(card.tagList) }
     }
     var newTagInput by remember { mutableStateOf("") }
 
-    val allPresetSuggestions = remember(availableTags) {
+    val allSuggested = remember(availableTags) {
         (DEFAULT_SUGGESTED_TAGS + availableTags).distinct()
     }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,230 +80,116 @@ fun CardTagDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Label,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Text(
-                            text = "Manage Tags & Categories",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                Text(
+                    text = "Manage Tags: ${card.kanji}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
+                Text(
+                    text = "Add custom labels or categories to organize this word.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
 
-                // Card info banner
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = card.kanji,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = card.meaningBurmese,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                // Current Tags Section
+                Text(
+                    text = "Active Tags:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
 
-                        Text(
-                            text = "L${card.lessonNumber}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-
-                // Currently Applied Tags
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (currentTags.isEmpty()) {
                     Text(
-                        text = "Applied Tags (${selectedTags.size}):",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    if (selectedTags.isEmpty()) {
-                        Text(
-                            text = "No tags added yet. Select a category below or type a custom tag.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    } else {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            selectedTags.forEach { tag ->
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                                    modifier = Modifier.testTag("tag_badge_$tag")
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            text = tag,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Remove $tag",
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier
-                                                .size(14.dp)
-                                                .clickable { selectedTags.remove(tag) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // New Tag Input
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = newTagInput,
-                        onValueChange = { newTagInput = it },
-                        placeholder = { Text("e.g. Work, School, JLPT N3 Grammar...") },
-                        label = { Text("Create New Tag") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("input_new_tag_field")
-                    )
-
-                    Button(
-                        onClick = {
-                            val clean = newTagInput.trim()
-                            if (clean.isNotEmpty() && !selectedTags.any { it.equals(clean, ignoreCase = true) }) {
-                                selectedTags.add(clean)
-                                newTagInput = ""
-                            }
-                        },
-                        enabled = newTagInput.isNotBlank(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .height(52.dp)
-                            .testTag("add_tag_btn")
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Tag")
-                    }
-                }
-
-                // Quick Category Suggestions
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Suggested Categories & Groups:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        text = "No tags added yet.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
-
+                } else {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        allPresetSuggestions.forEach { suggestion ->
-                            val isSelected = selectedTags.any { it.equals(suggestion, ignoreCase = true) }
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-                                modifier = Modifier
-                                    .clickable {
-                                        if (isSelected) {
-                                            selectedTags.removeAll { it.equals(suggestion, ignoreCase = true) }
-                                        } else {
-                                            selectedTags.add(suggestion)
-                                        }
-                                    }
-                                    .testTag("suggestion_chip_$suggestion")
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                    }
-                                    Text(
-                                        text = suggestion,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        currentTags.forEach { tag ->
+                            InputChip(
+                                selected = true,
+                                onClick = { currentTags.remove(tag) },
+                                label = { Text("#$tag") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove tag"
                                     )
                                 }
-                            }
+                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                // Add Custom Tag Input
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newTagInput,
+                        onValueChange = { newTagInput = it },
+                        placeholder = { Text("New tag name...") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("input_new_tag")
+                    )
 
-                // Action Buttons
+                    IconButton(
+                        onClick = {
+                            val trimmed = newTagInput.trim()
+                            if (trimmed.isNotEmpty() && !currentTags.contains(trimmed)) {
+                                currentTags.add(trimmed)
+                                newTagInput = ""
+                            }
+                        },
+                        enabled = newTagInput.isNotBlank()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add tag")
+                    }
+                }
+
+                // Suggested Tags
+                Text(
+                    text = "Suggested Tags:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    allSuggested.forEach { tag ->
+                        val isAdded = currentTags.contains(tag)
+                        FilterChip(
+                            selected = isAdded,
+                            onClick = {
+                                if (isAdded) {
+                                    currentTags.remove(tag)
+                                } else {
+                                    currentTags.add(tag)
+                                }
+                            },
+                            label = { Text("#$tag") }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -368,15 +204,9 @@ fun CardTagDialog(
 
                     Button(
                         onClick = {
-                            onSaveTags(card.id, selectedTags.toList())
-                            onDismiss()
+                            onSaveTags(card.id, currentTags.toList())
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("save_card_tags_btn")
+                        modifier = Modifier.testTag("save_tags_btn")
                     ) {
                         Text("Save Tags")
                     }

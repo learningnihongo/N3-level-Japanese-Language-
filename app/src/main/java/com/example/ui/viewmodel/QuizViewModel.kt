@@ -557,16 +557,19 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             QuizType.HOMOPHONE_SIMILAR_DRILL -> {
                 val curated = HomophoneData.findCuratedGroup(freshCard)
                 val correct = freshCard.kanji
-                val wrongChoices = (curated?.entries?.map { it.kanji } ?: emptyList())
-                    .filter { it != correct }
-                    .take(3)
-                    .ifEmpty { distractors.map { it.kanji }.distinct().filter { it != correct }.take(3) }
+                val curatedChoices: List<String> = curated?.entries?.map { it.kanji }?.filter { it != correct }?.take(3) ?: emptyList()
+                val wrongChoices: List<String> = if (curatedChoices.isNotEmpty()) {
+                    curatedChoices
+                } else {
+                    distractors.map { it.kanji }.distinct().filter { it != correct }.take(3)
+                }
+                val optionsList: List<String> = (wrongChoices + correct).shuffled()
                 QuizQuestion(
                     card = freshCard,
                     prompt = "【${freshCard.reading}】",
                     promptSub = "「${freshCard.meaningBurmese}」• ဆင်တူရိုးမှား ကန်ဂျီအမှန်ကို ရွေးပါ",
                     correctAnswer = correct,
-                    options = (wrongChoices + correct).shuffled(),
+                    options = optionsList,
                     clueHint = "💡 Hiragana 【${freshCard.reading}】",
                     homophoneComparison = curated?.let { HomophoneData.formatComparisonText(it) } ?: ""
                 )

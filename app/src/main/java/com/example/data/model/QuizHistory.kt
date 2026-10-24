@@ -7,13 +7,14 @@ import androidx.room.PrimaryKey
 data class QuizHistory(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val timestamp: Long = System.currentTimeMillis(),
-    val quizType: String,       // "Kanji to Meaning", "Meaning to Kanji", etc.
+    val quizType: String,
+    val lessonFilter: String,
     val score: Int,
     val totalQuestions: Int,
-    val lessonFilter: String = "All Lessons",
-    val lessonScope: String = "General N3",
-    val xpEarned: Int = 0,
     val timeSpentSeconds: Int = 0,
-    val accuracyPercentage: Int = if (totalQuestions > 0) (score * 100) / totalQuestions else 0
-)
+    val xpEarned: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
+) {
+    val accuracyPercentage: Int
+        get() = if (totalQuestions > 0) ((score.toDouble() / totalQuestions) * 100).toInt() else 0
+}

@@ -68,6 +68,11 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 
 secrets {

@@ -83,6 +83,30 @@ import com.example.ui.util.StudyActionHelper
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KanjiCompoundLookupSheet(
+    kanjiChar: Char,
+    allCards: List<VocabCard>,
+    onDismiss: () -> Unit,
+    onSpeak: ((String) -> Unit)? = null
+) {
+    val matched = allCards.firstOrNull { it.kanji.contains(kanjiChar) } ?: VocabCard(
+        lessonNumber = 1,
+        lessonTitle = "Kanji Compound",
+        sectionTitle = "Kanji Compound",
+        kanji = kanjiChar.toString(),
+        reading = "",
+        meaningBurmese = ""
+    )
+    KanjiCompoundLookupSheet(
+        card = matched,
+        allCards = allCards,
+        onDismiss = onDismiss,
+        onSpeak = onSpeak
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun KanjiCompoundLookupSheet(
     card: VocabCard,
     allCards: List<VocabCard>,
     onDismiss: () -> Unit,

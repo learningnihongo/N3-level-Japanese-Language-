@@ -154,6 +154,10 @@ class VocabRepository(
         vocabDao.setBookmark(cardId, isBookmarked)
     }
 
+    suspend fun setBookmark(cardId: Long, isBookmarked: Boolean) {
+        vocabDao.setBookmark(cardId, isBookmarked)
+    }
+
     suspend fun toggleBookmark(card: VocabCard): Boolean {
         val freshCard = vocabDao.getCardById(card.id) ?: card
         val targetState = !freshCard.isBookmarked
@@ -162,6 +166,10 @@ class VocabRepository(
     }
 
     suspend fun updateCardNotes(cardId: Long, personalNote: String) {
+        vocabDao.updatePersonalNote(cardId, personalNote.trim())
+    }
+
+    suspend fun updatePersonalNotes(cardId: Long, personalNote: String) {
         vocabDao.updatePersonalNote(cardId, personalNote.trim())
     }
 
@@ -217,12 +225,63 @@ class VocabRepository(
         return id
     }
 
+    suspend fun addCustomCard(
+        kanji: String,
+        reading: String,
+        meaningBurmese: String,
+        partOfSpeech: String = "",
+        exampleSentence: String = "",
+        exampleSentenceBurmese: String = "",
+        personalNote: String = "",
+        tags: String = ""
+    ): Long {
+        return insertCustomCard(
+            kanji = kanji,
+            reading = reading,
+            meaningBurmese = meaningBurmese,
+            partOfSpeech = partOfSpeech,
+            exampleSentence = exampleSentence,
+            exampleMeaningBurmese = exampleSentenceBurmese,
+            personalNote = personalNote,
+            tags = tags
+        )
+    }
+
+    suspend fun updateCardDetails(
+        cardId: Long,
+        kanji: String,
+        reading: String,
+        meaningBurmese: String,
+        partOfSpeech: String = "",
+        example: String = "",
+        exampleBurmese: String = "",
+        personalNote: String = "",
+        tags: String = ""
+    ) {
+        val existing = getCardById(cardId) ?: return
+        val updated = existing.copy(
+            kanji = kanji,
+            reading = reading,
+            meaningBurmese = meaningBurmese,
+            partOfSpeech = partOfSpeech,
+            exampleSentence = example,
+            exampleMeaningBurmese = exampleBurmese,
+            personalNote = personalNote,
+            tags = tags
+        )
+        updateCard(updated)
+    }
+
     suspend fun updateCard(card: VocabCard) {
         vocabDao.updateCard(card)
     }
 
     suspend fun deleteCard(card: VocabCard) {
         vocabDao.deleteCard(card)
+    }
+
+    suspend fun processReview(card: VocabCard, rating: ReviewRating) {
+        processCardReview(card, rating)
     }
 
     // SRS Review Flow (SM-2 Spaced Repetition Algorithm & Room Tracking)
@@ -309,6 +368,10 @@ class VocabRepository(
     // User Profile & Streak
     fun getUserProfile(): Flow<UserProfile?> = userProfileDao.getProfile()
     suspend fun getUserProfileDirect(): UserProfile? = userProfileDao.getProfile().firstOrNull()
+
+    suspend fun updateUserProfile(profile: UserProfile) {
+        userProfileDao.updateProfile(profile)
+    }
 
     suspend fun updateProfileName(name: String, dailyGoal: Int, targetJlpt: String) {
         val current = userProfileDao.getProfile().firstOrNull() ?: UserProfile(id = 1)

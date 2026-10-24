@@ -4,49 +4,32 @@ import com.example.data.model.VocabCard
 
 object VocabSeedDataApplied {
     fun getAllSeedCards(): List<VocabCard> {
-        return VocabSeedDataPart1.getCards() +
-               VocabSeedDataPart2.getCards() +
-               VocabSeedDataPart3.getCards() +
-               VocabSeedDataPart4.getCards() +
-               VocabSeedDataPart5.getCards() +
-               VocabSeedDataPart6.getCards() +
-               VocabSeedDataPart7.getCards() +
-               VocabSeedDataPart8.getCards() +
-               VocabSeedDataPart9.getCards() +
-               VocabSeedDataShinkanzen1.getCards() +
-               VocabSeedDataShinkanzen2.getCards() +
-               VocabSeedDataShinkanzen3.getCards() +
-               VocabSeedDataShinkanzen4.getCards() +
-               VocabSeedDataShinkanzen5.getCards() +
-               VocabSeedDataShinkanzen6.getCards() +
-               VocabSeedDataShinkanzen7.getCards() +
-               VocabSeedDataShinkanzen8.getCards() +
-               VocabSeedDataHnin1.getCards() +
-               VocabSeedDataHnin2.getCards() +
-               VocabSeedDataHnin3.getCards() +
-               VocabSeedDataHnin4.getCards() +
-               VocabSeedDataHnin5.getCards() +
-               VocabSeedDataHnin6.getCards() +
-               VocabSeedDataHnin7.getCards() +
-               VocabSeedDataHnin8.getCards() +
-               VocabSeedDataHnin9.getCards() +
-               VocabSeedDataHnin10.getCards() +
-               VocabSeedDataEssential1.getCards() +
-               VocabSeedDataEssential2.getCards() +
-               VocabSeedDataEssential3.getCards() +
-               VocabSeedDataEssential4.getCards() +
-               VocabSeedDataEssential5.getCards() +
-               VocabSeedDataEssential6.getCards() +
-               VocabSeedDataEssential7.getCards() +
-               VocabSeedDataEssential8.getCards() +
-               VocabSeedDataMastery1.getCards() +
-               VocabSeedDataMastery2.getCards() +
-               VocabSeedDataMastery3.getCards() +
-               VocabSeedDataMastery4.getCards() +
-               VocabSeedDataPastExams1.getCards() +
-               VocabSeedDataPastExams2.getCards() +
-               VocabSeedDataPastExams3.getCards() +
-               VocabSeedDataPastExams4.getCards()
+        val all = mutableListOf<VocabCard>()
+        all.addAll(VocabSeedDataPart1.getCards())
+        all.addAll(VocabSeedDataPart3.getCards())
+        all.addAll(VocabSeedDataPart4.getCards())
+        all.addAll(VocabSeedDataPart6.getCards())
+        all.addAll(VocabSeedDataPart7.getCards())
+        all.addAll(VocabSeedDataPart9.getCards())
+        all.addAll(VocabSeedDataShinkanzen2.getCards())
+        all.addAll(VocabSeedDataShinkanzen5.getCards())
+        all.addAll(VocabSeedDataShinkanzen6.getCards())
+        all.addAll(VocabSeedDataShinkanzen7.getCards())
+        all.addAll(VocabSeedDataShinkanzen8.getCards())
+        all.addAll(VocabSeedDataHnin1.getCards())
+        all.addAll(VocabSeedDataHnin2.getCards())
+        all.addAll(VocabSeedDataHnin4.getCards())
+        all.addAll(VocabSeedDataHnin5.getCards())
+        all.addAll(VocabSeedDataHnin7.getCards())
+        all.addAll(VocabSeedDataEssential1.getCards())
+        all.addAll(VocabSeedDataEssential3.getCards())
+        all.addAll(VocabSeedDataEssential4.getCards())
+        all.addAll(VocabSeedDataEssential6.getCards())
+        all.addAll(VocabSeedDataEssential7.getCards())
+        all.addAll(VocabSeedDataMastery2.getCards())
+        all.addAll(VocabSeedDataMastery4.getCards())
+        all.addAll(VocabSeedDataPastExams2.getCards())
+        all.addAll(VocabSeedDataPastExams3.getCards())
+        return all
     }
 }
-

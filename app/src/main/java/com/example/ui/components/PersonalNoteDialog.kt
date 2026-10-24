@@ -29,6 +29,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.data.model.VocabCard
+
+@Composable
+fun PersonalNoteDialog(
+    card: VocabCard,
+    onDismiss: () -> Unit,
+    onSaveNote: (String) -> Unit
+) {
+    PersonalNoteDialog(
+        initialNote = card.personalNote,
+        vocabWord = card.kanji,
+        onDismiss = onDismiss,
+        onSave = onSaveNote
+    )
+}
 
 @Composable
 fun PersonalNoteDialog(

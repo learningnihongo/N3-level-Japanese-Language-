@@ -15,7 +15,7 @@ class DailyStudyReminderWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val reminderPrefs = ReminderPreferences(applicationContext)
-        val settings = reminderPrefs.getSettings()
+        val settings = reminderPrefs.settings
 
         if (!settings.isEnabled) {
             return@withContext Result.success()

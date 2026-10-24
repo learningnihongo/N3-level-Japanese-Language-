@@ -42,6 +42,9 @@ class AuthManager(private val context: Context) {
             null
         }
 
+    val authStateFlow: Flow<FirebaseUser?>
+        get() = authStateFlow()
+
     fun authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
         val currentAuth = auth
         if (currentAuth == null) {

@@ -43,6 +43,12 @@ data class VocabCard(
     val tagList: List<String>
         get() = if (tags.isBlank()) emptyList() else tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
+    val exampleSentenceBurmese: String
+        get() = exampleMeaningBurmese
+
+    val personalNotes: String
+        get() = personalNote
+
     fun hasTag(tag: String): Boolean {
         return tagList.any { it.equals(tag.trim(), ignoreCase = true) }
     }

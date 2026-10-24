@@ -130,6 +130,13 @@ class AppThemePreferences(context: Context) {
     private val _themeSettingsFlow = MutableStateFlow(loadSettings())
     val themeSettingsFlow: StateFlow<AppThemeSettings> = _themeSettingsFlow.asStateFlow()
 
+    val settingsFlow: StateFlow<AppThemeSettings>
+        get() = themeSettingsFlow
+
+    @get:JvmName("getSettingsProperty")
+    val settings: AppThemeSettings
+        get() = loadSettings()
+
     fun getSettings(): AppThemeSettings = loadSettings()
 
     fun setThemeMode(mode: ThemeMode) {

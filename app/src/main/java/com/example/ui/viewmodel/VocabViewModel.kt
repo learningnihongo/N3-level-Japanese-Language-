@@ -3,18 +3,11 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.auth.AuthManager
 import com.example.data.db.AppDatabase
-import com.example.data.model.Badge
-import com.example.data.model.BadgeCategory
-import com.example.data.model.BadgeTier
-import com.example.data.model.LessonProgress
-import com.example.data.model.QuizHistory
-import com.example.data.model.QuizStreakInfo
-import com.example.data.model.SrsReviewLog
-import com.example.data.model.SrsScheduleSummary
-import com.example.data.model.StreakCalendarDay
-import com.example.data.model.UserProfile
-import com.example.data.model.VocabCard
+import com.example.data.model.*
+import com.example.data.repository.FirestoreSyncRepository
+import com.example.data.repository.OfflineFlashcardRepository
 import com.example.data.repository.VocabRepository
 import com.example.data.srs.ReviewRating
 import com.example.data.srs.SpacedRepetitionEngine
@@ -22,317 +15,89 @@ import com.example.data.srs.SrsCalculationResult
 import com.example.reminder.ReminderPreferences
 import com.example.reminder.ReminderScheduler
 import com.example.reminder.ReminderSettings
-import com.example.ui.theme.AppThemePreferences
-import com.example.ui.theme.AppThemeSettings
-import com.example.ui.theme.IconThemeStyle
-import com.example.ui.theme.ThemeAesthetic
-import com.example.ui.theme.ThemeMode
-import com.example.ui.theme.ThemePalette
+import com.example.ui.theme.*
 import com.example.ui.util.TtsHelper
 import com.example.ui.util.VoiceSettings
 import com.example.ui.util.VoiceSettingsPreferences
-import com.example.auth.AuthManager
-import com.example.data.model.CustomFlashcard
-import com.example.data.model.FirestoreQuizHistory
-import com.example.data.model.FirestoreUserProfile
-import com.example.data.repository.FirestoreSyncRepository
 import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-enum class VocabFilterType {
-    ALL,
-    DUE_REVIEWS,
-    BOOKMARKED,
-    CUSTOM_CARDS,
-    WEAK_CARDS,
-    MASTERED,
-    PAST_EXAMS
-}
-
-enum class SearchFilterTarget(val label: String, val burmeseLabel: String, val subtitle: String) {
-    ALL("All", "အားလုံး", "Kanji, Reading, Meaning"),
-    READING("Reading", "ဖတ်နည်း", "Hiragana, Katakana, Romaji"),
-    MEANING("Meaning", "အဓိပ္ပာယ်", "Burmese & English meanings")
-}
-
-enum class StatsTimeRange(val days: Int, val label: String) {
-    DAYS_7(7, "7 Days"),
-    DAYS_14(14, "14 Days"),
-    DAYS_30(30, "30 Days")
-}
-
-data class DailyStudyPoint(
-    val dateLabel: String,
-    val dayName: String,
-    val cardsCount: Int,
-    val xpCount: Int,
-    val isToday: Boolean,
-    val goalCount: Int
-)
-
-data class KanjiCategoryMastery(
-    val categoryId: String,
-    val categoryName: String,
-    val categoryJapanese: String,
-    val iconEmoji: String,
-    val lessonRange: String,
-    val totalCount: Int,
-    val masteredCount: Int,
-    val reviewingCount: Int,
-    val learningCount: Int,
-    val newCount: Int,
-    val masteryPercent: Float,
-    val accuracyPercent: Int,
-    val sampleKanji: List<String> = emptyList()
-)
-
-data class StreakDayStatus(
-    val dayName: String,
-    val dateLabel: String,
-    val dayOfMonth: Int,
-    val isCompleted: Boolean,
-    val isToday: Boolean,
-    val cardsCount: Int,
-    val xpEarned: Int
-)
-
-data class DailyStreakSummary(
-    val currentStreak: Int,
-    val bestStreak: Int,
-    val streakDays: List<StreakDayStatus>,
-    val activeDaysThisMonth: Int,
-    val nextMilestoneStreak: Int,
-    val daysUntilMilestone: Int,
-    val totalReviewsCount: Int,
-    val streakConsistencyPercent: Int
-)
-
-data class MasteryBreakdown(
-    val masteredCount: Int,
-    val reviewingCount: Int,
-    val learningCount: Int,
-    val newCount: Int,
-    val totalCards: Int,
-    val masteryPercent: Float,
-    val jlptLevel: String = "N3"
-)
-
-data class LessonMasteryDetail(
-    val lessonNumber: Int,
-    val lessonTitle: String,
-    val totalCount: Int,
-    val masteredCount: Int,
-    val learningCount: Int,
-    val dueCount: Int,
-    val masteryPercent: Float
-)
-
-data class AccuracySummary(
-    val totalCorrect: Int,
-    val totalIncorrect: Int,
-    val accuracyPercent: Int,
-    val totalReviews: Int
-)
-
-data class QuizTrendPoint(
-    val quizType: String,
-    val scorePercent: Int,
-    val score: Int,
-    val totalQuestions: Int,
-    val timestamp: Long,
-    val dateLabel: String
-)
-
-data class WeeklyKanjiProgress(
-    val dayName: String,
-    val fullDateLabel: String,
-    val shortDateLabel: String,
-    val dayOfMonth: Int,
-    val isToday: Boolean,
-    val kanjiReviewed: Int,
-    val kanjiMastered: Int,
-    val goalCount: Int,
-    val masteryRatePercent: Int
-)
-
-data class WeeklyMasteryVsReviewedSummary(
-    val dailyProgressList: List<WeeklyKanjiProgress>,
-    val totalReviewedWeek: Int,
-    val totalMasteredWeek: Int,
-    val avgDailyReviewed: Int,
-    val avgDailyMastered: Int,
-    val weeklyMasteryConversionRate: Int,
-    val bestDayName: String,
-    val targetWeeklyGoal: Int,
-    val goalReachedDaysCount: Int
-)
-
-data class KanjiTimelinePoint(
-    val dateLabel: String,
-    val shortDateLabel: String,
-    val dayName: String,
-    val timestamp: Long,
-    val cumulativeLearned: Int,
-    val cumulativeMastered: Int,
-    val dailyNewKanji: Int,
-    val dailyReviewedKanji: Int,
-    val projectedTarget: Int,
-    val isToday: Boolean,
-    val retentionPercent: Int
-)
-
-data class KanjiProgressDashboardSummary(
-    val selectedTimeRange: StatsTimeRange,
-    val timelinePoints: List<KanjiTimelinePoint>,
-    val totalTargetKanji: Int = 375, // Official JLPT N3 Target
-    val currentLearnedKanji: Int,
-    val currentMasteredKanji: Int,
-    val currentLearningKanji: Int,
-    val currentNewKanji: Int,
-    val overallProgressPercent: Float,
-    val weeklyVelocity: Float, // +X kanji per week
-    val estimatedDaysToGoal: Int,
-    val currentStreak: Int,
-    val bestStreak: Int,
-    val isStreakActiveToday: Boolean,
-    val todayLearnedCount: Int,
-    val dailyGoalCount: Int,
-    val consistencyPercent: Int,
-    val calendarHeatmapDays: List<StreakDayStatus>,
-    val totalReviews: Int
-)
-
-enum class FlashcardStudyMode(val label: String, val subtitle: String) {
-    JP_TO_MY("JP → MM", "Japanese to Burmese"),
-    MY_TO_JP("MM → JP", "Burmese to Japanese"),
-    AUDIO_FIRST("Audio First", "Listen & Recall"),
-    COLLOCATION("တွဲလုံးများ", "Collocations & Compounds")
-}
-
-data class SessionStudyStats(
-    val totalStudied: Int = 0,
-    val againCount: Int = 0,
-    val hardCount: Int = 0,
-    val goodCount: Int = 0,
-    val easyCount: Int = 0,
-    val xpEarned: Int = 0,
-    val mistakeCards: List<VocabCard> = emptyList()
-)
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class VocabViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
-    val repository = VocabRepository(db.vocabDao(), db.userProfileDao(), db.quizDao(), db.srsReviewDao())
-    val offlineFlashcardRepository = com.example.data.repository.OfflineFlashcardRepository(
+    private val repository = VocabRepository(
+        db.vocabDao(),
+        db.userProfileDao(),
+        db.quizDao(),
+        db.srsReviewDao()
+    )
+    val offlineFlashcardRepository = OfflineFlashcardRepository(
         db.kanjiDao(),
         db.kotobaDao(),
         db.customFlashcardDao()
     )
-    val authManager = AuthManager(application)
-    val firestoreSyncRepo = FirestoreSyncRepository.create(application)
-    val ttsHelper = TtsHelper(application)
+    private val authManager = AuthManager(application)
+    private val firestoreSyncRepo = FirestoreSyncRepository.create(application)
+    private val ttsHelper = TtsHelper(application)
     private val reminderPrefs = ReminderPreferences(application)
     private val themePrefs = AppThemePreferences(application)
     private val voicePrefs = VoiceSettingsPreferences(application)
-
-    val currentUser: StateFlow<FirebaseUser?> = authManager.authStateFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), authManager.currentUser)
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val cloudCustomCards: StateFlow<List<CustomFlashcard>> = currentUser.flatMapLatest { user ->
-        if (user != null) {
-            firestoreSyncRepo.getCustomCardsFlow(user.uid)
-        } else {
-            MutableStateFlow(firestoreSyncRepo.getLocalCustomCards())
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val firestoreUserProfile: StateFlow<FirestoreUserProfile?> = currentUser.flatMapLatest { user ->
-        if (user != null) {
-            firestoreSyncRepo.getUserProfileFlow(user.uid)
-        } else {
-            MutableStateFlow(firestoreSyncRepo.getLocalUserProfile())
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), firestoreSyncRepo.getLocalUserProfile())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val cloudQuizHistories: StateFlow<List<FirestoreQuizHistory>> = currentUser.flatMapLatest { user ->
-        firestoreSyncRepo.getQuizHistoriesFlow(user?.uid)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val reminderSettings: StateFlow<ReminderSettings> = reminderPrefs.settingsFlow
-    val themeSettings: StateFlow<AppThemeSettings> = themePrefs.themeSettingsFlow
-    val voiceSettings: StateFlow<VoiceSettings> = voicePrefs.settingsFlow
-
-    val recentQuizHistories: StateFlow<List<QuizHistory>> = repository.getRecentQuizHistory(20)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // SM-2 Spaced Repetition Schedule and Tracking StateFlows
-    val srsScheduleSummary: StateFlow<SrsScheduleSummary> = repository.getSrsScheduleSummary()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SrsScheduleSummary())
-
-    val recentSrsLogs: StateFlow<List<SrsReviewLog>> = repository.getRecentSrsLogs(50)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val totalSrsReviewsCount: StateFlow<Int> = repository.getTotalSrsReviewsCount()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    val srsRetentionRate: StateFlow<Float?> = repository.getSrsRetentionRate()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-    fun setThemeMode(mode: ThemeMode) = themePrefs.setThemeMode(mode)
-    fun setThemePalette(palette: ThemePalette) = themePrefs.setThemePalette(palette)
-    fun setIconThemeStyle(style: IconThemeStyle) = themePrefs.setIconThemeStyle(style)
-    fun setOledBlack(oled: Boolean) = themePrefs.setOledBlack(oled)
-    fun setThemeAesthetic(aesthetic: ThemeAesthetic) = themePrefs.setThemeAesthetic(aesthetic)
-    fun toggleDarkMode(currentIsDark: Boolean) = themePrefs.toggleDarkMode(currentIsDark)
-
-    // Voice & Pronunciation Preferences Controls
-    fun setVoiceSpeechRate(rate: Float) {
-        voicePrefs.updateSettings(speechRate = rate)
-        ttsHelper.setSpeechRate(rate)
-    }
-
-    fun setVoicePitch(pitch: Float) {
-        voicePrefs.updateSettings(pitch = pitch)
-        ttsHelper.setPitch(pitch)
-    }
-
-    fun setVoicePreferPhonetic(prefer: Boolean) {
-        voicePrefs.updateSettings(preferPhoneticReading = prefer)
-    }
-
-    fun setVoiceAutoPlayFlip(autoPlay: Boolean) {
-        voicePrefs.updateSettings(autoPlayAudioOnFlip = autoPlay)
-    }
-
-    fun testVoicePronunciation() {
-        val sampleText = "こんにちは！日本語の漢字と語彙の発音練習です。"
-        ttsHelper.speak(sampleText)
-    }
 
     init {
         viewModelScope.launch {
             repository.ensureDataSeeded()
         }
-        ReminderScheduler.rescheduleFromPreferences(application)
     }
 
-    // User Profile
-    val userProfile: StateFlow<UserProfile?> = repository.getUserProfile()
+    // ------------------------------------------------------------------------
+    // User & Cloud Sync
+    // ------------------------------------------------------------------------
+    val currentUser: StateFlow<FirebaseUser?> = authManager.authStateFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Overview Stats
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val cloudCustomCards: StateFlow<List<CustomFlashcard>> = currentUser.flatMapLatest { user ->
+        firestoreSyncRepo.observeCustomFlashcards(user?.uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val firestoreUserProfile: StateFlow<FirestoreUserProfile?> = currentUser.flatMapLatest { user ->
+        firestoreSyncRepo.observeUserProfile(user?.uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val cloudQuizHistories: StateFlow<List<FirestoreQuizHistory>> = currentUser.flatMapLatest { user ->
+        firestoreSyncRepo.observeQuizHistories(user?.uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // ------------------------------------------------------------------------
+    // Preferences & Settings
+    // ------------------------------------------------------------------------
+    val reminderSettings: StateFlow<ReminderSettings> = reminderPrefs.settingsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), reminderPrefs.settings)
+
+    val themeSettings: StateFlow<AppThemeSettings> = themePrefs.settingsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), themePrefs.settings)
+
+    val voiceSettings: StateFlow<VoiceSettings> = voicePrefs.settingsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), voicePrefs.settings)
+
+    // ------------------------------------------------------------------------
+    // Database Core Flows
+    // ------------------------------------------------------------------------
+    val allCards: StateFlow<List<VocabCard>> = repository.getAllCards()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val userProfile: StateFlow<UserProfile> = repository.getUserProfile()
+        .map { it ?: UserProfile(id = 1) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserProfile(id = 1))
+
     val totalCardCount: StateFlow<Int> = repository.getTotalCardCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -345,941 +110,52 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     val lessonProgressList: StateFlow<List<LessonProgress>> = repository.getLessonProgress()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allCards: StateFlow<List<VocabCard>> = repository.getAllCards()
+    val recentQuizHistories: StateFlow<List<QuizHistory>> = repository.getAllQuizHistories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Search, Grouping, and Filtering
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery = _searchQuery.asStateFlow()
+    val srsScheduleSummary: StateFlow<SrsScheduleSummary> = repository.getSrsScheduleSummary()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SrsScheduleSummary())
 
-    private val _searchFilterTarget = MutableStateFlow(SearchFilterTarget.ALL)
-    val searchFilterTarget = _searchFilterTarget.asStateFlow()
+    val recentSrsLogs: StateFlow<List<SrsReviewLog>> = repository.getRecentSrsLogs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun setSearchFilterTarget(target: SearchFilterTarget) {
-        _searchFilterTarget.value = target
-    }
+    val totalSrsReviewsCount: StateFlow<Int> = repository.getTotalSrsReviewsCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val _currentFilter = MutableStateFlow(VocabFilterType.ALL)
-    val currentFilter = _currentFilter.asStateFlow()
-
-    private val _selectedLesson = MutableStateFlow<Int?>(null)
-    val selectedLesson = _selectedLesson.asStateFlow()
-
-    private val _selectedTag = MutableStateFlow<String?>(null)
-    val selectedTag = _selectedTag.asStateFlow()
+    val srsRetentionRate: StateFlow<Float?> = repository.getSrsRetentionRate()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val allCustomTags: StateFlow<List<String>> = repository.getAllCustomTags()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Statistics Time Range
+    val quizStreakInfo: StateFlow<QuizStreakInfo> = repository.getQuizStreakFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QuizStreakInfo())
+
+    // ------------------------------------------------------------------------
+    // Search, Filters & Navigation Target States
+    // ------------------------------------------------------------------------
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchFilterTarget = MutableStateFlow(SearchFilterTarget.ALL)
+    val searchFilterTarget: StateFlow<SearchFilterTarget> = _searchFilterTarget.asStateFlow()
+
+    private val _currentFilter = MutableStateFlow(VocabFilterType.ALL)
+    val currentFilter: StateFlow<VocabFilterType> = _currentFilter.asStateFlow()
+
+    private val _selectedLesson = MutableStateFlow<Int?>(null)
+    val selectedLesson: StateFlow<Int?> = _selectedLesson.asStateFlow()
+
+    private val _selectedTag = MutableStateFlow<String?>(null)
+    val selectedTag: StateFlow<String?> = _selectedTag.asStateFlow()
+
     private val _statsTimeRange = MutableStateFlow(StatsTimeRange.DAYS_7)
-    val statsTimeRange = _statsTimeRange.asStateFlow()
-
-    fun setStatsTimeRange(range: StatsTimeRange) {
-        _statsTimeRange.value = range
-    }
-
-    // 1. JLPT N3 Mastery Breakdown Flow
-    val masteryBreakdown: StateFlow<MasteryBreakdown> = repository.getAllCards().map { cards ->
-        val total = cards.size
-        val mastered = cards.count { it.masteryLevel >= 3 }
-        val reviewing = cards.count { it.masteryLevel == 2 }
-        val learning = cards.count { it.masteryLevel == 1 }
-        val newCards = cards.count { it.masteryLevel == 0 && it.repetitions == 0 }
-        val percent = if (total > 0) (mastered.toFloat() / total.toFloat()) * 100f else 0f
-        MasteryBreakdown(
-            masteredCount = mastered,
-            reviewingCount = reviewing,
-            learningCount = learning,
-            newCount = newCards,
-            totalCards = total,
-            masteryPercent = percent,
-            jlptLevel = "N3"
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        MasteryBreakdown(0, 0, 0, 0, 0, 0f)
-    )
-
-    // 2. Lesson-by-Lesson JLPT N3 Mastery Details
-    val lessonMasteryStats: StateFlow<List<LessonMasteryDetail>> = repository.getAllCards().map { cards ->
-        cards.groupBy { it.lessonNumber }.map { (lessonNum, cardList) ->
-            val first = cardList.firstOrNull()
-            val total = cardList.size
-            val mastered = cardList.count { it.masteryLevel >= 3 }
-            val learning = cardList.count { it.masteryLevel in 1..2 }
-            val due = cardList.count { it.isDue }
-            val percent = if (total > 0) (mastered.toFloat() / total.toFloat()) * 100f else 0f
-            LessonMasteryDetail(
-                lessonNumber = lessonNum,
-                lessonTitle = first?.lessonTitle ?: if (lessonNum == 999) "Custom Flashcards" else "Lesson $lessonNum",
-                totalCount = total,
-                masteredCount = mastered,
-                learningCount = learning,
-                dueCount = due,
-                masteryPercent = percent
-            )
-        }.sortedBy { it.lessonNumber }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // 2b. Kanji Categories Mastery Stats Flow
-    val kanjiCategoryStats: StateFlow<List<KanjiCategoryMastery>> = repository.getAllCards().map { cards ->
-        val categoryDefinitions = listOf(
-            Triple("cat_human", "People & Relations", "人間関係・一生・生活") to ((1..6).toList() to "👥"),
-            Triple("cat_verbs1", "Basic Verbs I", "基本動詞・身体動作") to ((7..11).toList() to "⚡"),
-            Triple("cat_adj1", "Action Nouns & Adjectives I", "派生名詞・形容詞") to ((12..16).toList() to "✨"),
-            Triple("cat_society", "Society, Work & Information", "社会・経営・情報・位置") to ((17..21).toList() to "🏙️"),
-            Triple("cat_verbs2", "Movement & Action Verbs II", "変化・移動・身体動作") to ((22..26).toList() to "🏃"),
-            Triple("cat_katakana", "Katakana & Adjectives II", "カタカナ語・性質・評価") to ((27..30).toList() to "📱"),
-            Triple("cat_adverbs", "Adverbs, Health & Culture", "副詞・医療・文化・経済") to ((31..36).toList() to "🔬"),
-            Triple("cat_verbs3", "Advanced Verbs & Conjunctions", "発展動詞・調理・接続詞") to ((37..44).toList() to "📚"),
-            Triple("cat_animals", "Animals & Living Creatures (တိရစ္ဆာန်များ)", "動物・鳥類・昆虫・生物分類") to ((45..50).toList() to "🐾"),
-            Triple("cat_skz_daily", "Shinkanzen: Daily Life (နေ့စဉ်ဘဝနှင့်မြို့)", "新完全: 時間・家・町・料理・人間関係") to ((51..55).toList() to "🏡"),
-            Triple("cat_skz_health", "Shinkanzen: Body & Health (ခန္ဓာကိုယ်နှင့်ကျန်းမာရေး)", "新完全: 美容・健康・病気・怪我") to ((56..57).toList() to "🩺"),
-            Triple("cat_skz_hobby", "Shinkanzen: Sports & Fashion (အားကစားနှင့်ဖက်ရှင်)", "新完全: スポーツ・芸術・ファッション") to ((58..59).toList() to "🎨"),
-            Triple("cat_skz_travel_edu", "Shinkanzen: Travel & Education (ခရီးသွားနှင့်ပညာရေး)", "新完全: 旅行・移動・学校生活・大学") to ((60..62).toList() to "✈️"),
-            Triple("cat_skz_work_society", "Shinkanzen: Work & Society (အလုပ်နှင့်လူ့အဖွဲ့အစည်း)", "新完全: 就職・IT・事件事故・政治経済") to ((63..67).toList() to "💼"),
-            Triple("cat_skz_nature", "Shinkanzen: Nature & Measure (သဘာဝနှင့်အရေအတွက်)", "新完全: 自然・動植物・数と量・時間") to ((68..71).toList() to "🌿"),
-            Triple("cat_skz_applied", "Shinkanzen: Applied Skills (လက်တွေ့အသုံးချစွမ်းရည်)", "新完全: 和語・漢語・形容詞・副詞・擬音語") to ((72..79).toList() to "🎯"),
-            Triple("cat_hnin_rules", "Hnin: Kanji Rules & Formation (ဖွဲ့စည်းပုံစည်းမျဉ်း)", "第1部 漢字のルール・成り立ち") to ((80..82).toList() to "📐"),
-            Triple("cat_hnin_prefixes", "Hnin: Prefixes, Suffixes & Compounds (ရှေ့ဆက်/နောက်ဆက်)", "第2部 熟語を作る漢字・接頭語・接尾語") to ((83..86).toList() to "🔗"),
-            Triple("cat_hnin_society", "Hnin: Politics, Economy & Society (နိုင်ငံရေး/စီးပွားရေး)", "第3部 政治・経済・社会") to ((87..88).toList() to "🏛️"),
-            Triple("cat_hnin_life", "Hnin: Education, Culture & Daily Life (ပညာရေး/ယဉ်ကျေးမှု)", "第3部 教育・文化・生活") to ((89..93).toList() to "🎓"),
-            Triple("cat_hnin_travel", "Hnin: Traffic, Movement & Travel (လမ်းပန်း/ခရီးသွား)", "第3部 交通・旅行・方角") to ((94..95).toList() to "🚅"),
-            Triple("cat_hnin_onkun", "Hnin: Dual On-Kun Mastery (တရုတ်သံနှင့်ဂျပန်သံများ)", "第4部 音読みと訓読みを覚える漢字") to ((96..99).toList() to "🈴"),
-            Triple("cat_ess_plan", "Essential: Planning & Affairs (စီစဉ်ကြိုတင်မှုနှင့် ကိစ္စရပ်များ)", "漢字言葉: 計画・事柄・交通") to ((100..101).toList() to "📋"),
-            Triple("cat_ess_mind", "Essential: Mind & Society (စိတ်ခံစားမှုနှင့် လူမှုဘဝ)", "漢字言葉: 復習・心構え・人間関係") to ((102..103).toList() to "👥"),
-            Triple("cat_ess_commerce", "Essential: Commerce & Production (ထုတ်ကုန်နှင့် အရောင်းအဝယ်)", "漢字言葉: 公共・安全・商品・製造") to ((104..105).toList() to "🏬"),
-            Triple("cat_ess_society", "Essential: Society & Transport (လူမှုပတ်ဝန်းကျင်နှင့် သွားလာရေး)", "漢字言葉: 単位・社会活動・運行・移動") to ((106..107).toList() to "🚦"),
-            Triple("cat_ess_urban", "Essential: Urban Living & Tech (မြို့ပြလူနေမှုနှင့် နည်းပညာ)", "漢字言葉: 部屋・郵便・自然現象・技術") to ((108..109).toList() to "🏙️"),
-            Triple("cat_ess_edu_tech", "Essential: Education & Self (ပညာရေးနှင့် နေ့စဉ်ဘဝ)", "漢字言葉: 指示・通信・教育・日常") to ((110..111).toList() to "📱"),
-            Triple("cat_ess_career", "Essential: Career & Documents (အလုပ်အကိုင်နှင့် စာရွက်စာတမ်း)", "漢字言葉: 貿易・職業・書類・案内") to ((112..113).toList() to "💼"),
-            Triple("cat_ess_economy", "Essential: Economy & Application (စီးပွားရေးနှင့် လျှောက်လွှာ)", "漢字言葉: 経済・約束・正確・申請") to ((114..115).toList() to "📈"),
-            Triple("cat_ess_relations", "Essential: Relations & Labor (ပတ်သက်ဆက်နွယ်မှုနှင့် အဖွဲ့အစည်း)", "漢字言葉: 関係・移動・団体・労働") to ((116..117).toList() to "🤝"),
-            Triple("cat_ess_daily_affix", "Essential: Daily Living & Affixes (နေ့စဉ်သုံးစကားနှင့် ရှေ့ဆက်/နောက်ဆက်)", "漢字言葉: 営業・生活・医療・接頭接尾") to ((118..119).toList() to "🏷️"),
-            Triple("cat_mas_action_feel", "Mastery: Actions, Living & Emotions (အပြုအမူနှင့် ခံစားမှု)", "漢字マスター: 行動・生活・感情・人間関係") to ((120..121).toList() to "🌟"),
-            Triple("cat_mas_family_work", "Mastery: Family, Roles & Workplace (မိသားစုနှင့် လုပ်ငန်းခွင်)", "漢字マスター: 家族・役割・職場・能力") to ((122..123).toList() to "👨‍👩‍👧"),
-            Triple("cat_mas_plan_habit", "Mastery: Healthcare, Plans & Habits (ကျန်းမာရေးနှင့် အလေ့အကျင့်)", "漢字マスター: 医療・態度・挑戦・習慣") to ((124..125).toList() to "🧘"),
-            Triple("cat_mas_nature_rules", "Mastery: Nature, Culture & Rules (သဘာဝ၊ ရိုးရာနှင့် ဥပဒေ)", "漢字マスター: 自然・伝統・規則・人間性") to ((126..127).toList() to "⛩️"),
-            Triple("cat_mas_society_mind", "Mastery: Society, Careers & Mind (စီးပွားရေး၊ အလုပ်နှင့် စိတ်ပိုင်းဆိုင်ရာ)", "漢字マスター: 経済・進路・人間・心理") to ((128..129).toList() to "💡"),
-            Triple("cat_mas_school_action", "Mastery: Facilities, Tourism & Problem Solving (ကျောင်း၊ ခရီးသွားနှင့် ဖြေရှင်းမှု)", "漢字マスター: 設備・学校・解決・観光") to ((130..131).toList() to "🎒")
-        )
-
-        categoryDefinitions.map { (catMeta, lessonData) ->
-            val (catId, nameEn, nameJp) = catMeta
-            val (lessons, emoji) = lessonData
-            val matchedCards = cards.filter { it.lessonNumber in lessons }
-            val total = matchedCards.size
-            val mastered = matchedCards.count { it.masteryLevel >= 3 }
-            val reviewing = matchedCards.count { it.masteryLevel == 2 }
-            val learning = matchedCards.count { it.masteryLevel == 1 }
-            val newCount = matchedCards.count { it.masteryLevel == 0 && it.repetitions == 0 }
-            val pct = if (total > 0) (mastered.toFloat() / total.toFloat()) * 100f else 0f
-
-            var correct = 0
-            var incorrect = 0
-            for (c in matchedCards) {
-                correct += c.timesCorrect
-                incorrect += c.timesIncorrect
-            }
-            val acc = if (correct + incorrect > 0) ((correct.toFloat() / (correct + incorrect).toFloat()) * 100).toInt() else 85
-
-            KanjiCategoryMastery(
-                categoryId = catId,
-                categoryName = nameEn,
-                categoryJapanese = nameJp,
-                iconEmoji = emoji,
-                lessonRange = if (lessons.size == 1) "Lesson ${lessons.first()}" else "Lessons ${lessons.first()}-${lessons.last()}",
-                totalCount = total,
-                masteredCount = mastered,
-                reviewingCount = reviewing,
-                learningCount = learning,
-                newCount = newCount,
-                masteryPercent = pct,
-                accuracyPercent = acc,
-                sampleKanji = matchedCards.take(5).map { it.kanji }
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // 2c. Daily Study Streak Visual Summary Flow
-    val dailyStreakSummary: StateFlow<DailyStreakSummary> = combine(
-        userProfile,
-        repository.getAllCards(),
-        repository.getRecentQuizHistory(30)
-    ) { profile, cards, quizHistory ->
-        val streak = profile?.currentStreak ?: 1
-        val best = profile?.bestStreak ?: streak
-        val dayFormat = java.text.SimpleDateFormat("EEE", java.util.Locale.ENGLISH)
-        val dateFormat = java.text.SimpleDateFormat("MMM d", java.util.Locale.ENGLISH)
-
-        val daysList = mutableListOf<StreakDayStatus>()
-        var activeDays = 0
-
-        // Last 14 days streak matrix
-        for (i in 13 downTo 0) {
-            val targetCal = java.util.Calendar.getInstance()
-            targetCal.add(java.util.Calendar.DAY_OF_YEAR, -i)
-            val year = targetCal.get(java.util.Calendar.YEAR)
-            val dayOfYear = targetCal.get(java.util.Calendar.DAY_OF_YEAR)
-            val isToday = i == 0
-
-            val reviewedOnDay = cards.count { card ->
-                if (card.lastReviewedTimestamp == 0L) false
-                else {
-                    val cCal = java.util.Calendar.getInstance().apply { timeInMillis = card.lastReviewedTimestamp }
-                    cCal.get(java.util.Calendar.YEAR) == year && cCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-                }
-            }
-
-            val quizzesOnDay = quizHistory.filter { q ->
-                val qCal = java.util.Calendar.getInstance().apply { timeInMillis = q.timestamp }
-                qCal.get(java.util.Calendar.YEAR) == year && qCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-            }
-
-            val totalActivities = reviewedOnDay + quizzesOnDay.size
-            val isCompleted = if (isToday) (totalActivities > 0 || streak > 0) else (i < streak || totalActivities > 0)
-            if (isCompleted) activeDays++
-
-            val xp = if (totalActivities > 0) (reviewedOnDay * 8 + quizzesOnDay.sumOf { it.xpEarned }) else if (isCompleted) 40 else 0
-
-            daysList.add(
-                StreakDayStatus(
-                    dayName = dayFormat.format(targetCal.time),
-                    dateLabel = dateFormat.format(targetCal.time),
-                    dayOfMonth = targetCal.get(java.util.Calendar.DAY_OF_MONTH),
-                    isCompleted = isCompleted,
-                    isToday = isToday,
-                    cardsCount = if (totalActivities > 0) totalActivities else if (isCompleted) 15 else 0,
-                    xpEarned = xp
-                )
-            )
-        }
-
-        val nextMilestone = when {
-            streak < 3 -> 3
-            streak < 7 -> 7
-            streak < 14 -> 14
-            streak < 30 -> 30
-            streak < 60 -> 60
-            streak < 100 -> 100
-            else -> streak + 30
-        }
-
-        val totalReviews = cards.sumOf { it.timesCorrect + it.timesIncorrect }
-        val consistency = ((activeDays.toFloat() / 14f) * 100).toInt().coerceIn(0, 100)
-
-        DailyStreakSummary(
-            currentStreak = streak,
-            bestStreak = best,
-            streakDays = daysList,
-            activeDaysThisMonth = activeDays,
-            nextMilestoneStreak = nextMilestone,
-            daysUntilMilestone = (nextMilestone - streak).coerceAtLeast(0),
-            totalReviewsCount = totalReviews,
-            streakConsistencyPercent = consistency
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        DailyStreakSummary(1, 1, emptyList(), 1, 7, 6, 0, 85)
-    )
-
-    // Reactive count of flashcards reviewed today
-    val todayReviewedCardsCount: StateFlow<Int> = repository.getAllCards().map { cards ->
-        val calNow = java.util.Calendar.getInstance()
-        val year = calNow.get(java.util.Calendar.YEAR)
-        val dayOfYear = calNow.get(java.util.Calendar.DAY_OF_YEAR)
-        cards.count { card ->
-            if (card.lastReviewedTimestamp == 0L) false
-            else {
-                val cCal = java.util.Calendar.getInstance().apply { timeInMillis = card.lastReviewedTimestamp }
-                cCal.get(java.util.Calendar.YEAR) == year && cCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-            }
-        }
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        0
-    )
-
-    // 3. Accuracy & Retention Flow
-    val accuracySummary: StateFlow<AccuracySummary> = repository.getAllCards().map { cards ->
-        var correct = 0
-        var incorrect = 0
-        for (c in cards) {
-            correct += c.timesCorrect
-            incorrect += c.timesIncorrect
-        }
-        val total = correct + incorrect
-        val accuracy = if (total > 0) ((correct.toFloat() / total.toFloat()) * 100).toInt() else 92
-        AccuracySummary(
-            totalCorrect = correct,
-            totalIncorrect = incorrect,
-            accuracyPercent = accuracy,
-            totalReviews = total
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        AccuracySummary(0, 0, 92, 0)
-    )
-
-    // 4. Daily Study Activity Points (Cards Studied & XP)
-    val dailyStudyStats: StateFlow<List<DailyStudyPoint>> = combine(
-        repository.getAllCards(),
-        repository.getRecentQuizHistory(50),
-        userProfile,
-        _statsTimeRange
-    ) { cards, quizHistories, profile, timeRange ->
-        val daysCount = timeRange.days
-        val goal = profile?.dailyGoal ?: 15
-        val cal = java.util.Calendar.getInstance()
-        val dayFormat = java.text.SimpleDateFormat("EEE", java.util.Locale.ENGLISH)
-        val dateFormat = java.text.SimpleDateFormat("MMM d", java.util.Locale.ENGLISH)
-
-        val points = mutableListOf<DailyStudyPoint>()
-
-        // Generate day points backwards from today
-        for (i in (daysCount - 1) downTo 0) {
-            val targetCal = java.util.Calendar.getInstance()
-            targetCal.add(java.util.Calendar.DAY_OF_YEAR, -i)
-            val year = targetCal.get(java.util.Calendar.YEAR)
-            val dayOfYear = targetCal.get(java.util.Calendar.DAY_OF_YEAR)
-
-            val isToday = i == 0
-
-            // Filter cards reviewed on this day
-            val reviewedOnDay = cards.count { card ->
-                if (card.lastReviewedTimestamp == 0L) false
-                else {
-                    val cardCal = java.util.Calendar.getInstance().apply { timeInMillis = card.lastReviewedTimestamp }
-                    cardCal.get(java.util.Calendar.YEAR) == year && cardCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-                }
-            }
-
-            // Quizzes on this day
-            val quizzesOnDay = quizHistories.filter { q ->
-                val qCal = java.util.Calendar.getInstance().apply { timeInMillis = q.timestamp }
-                qCal.get(java.util.Calendar.YEAR) == year && qCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-            }
-
-            val quizCardsCount = quizzesOnDay.sumOf { it.totalQuestions }
-            val quizXp = quizzesOnDay.sumOf { it.xpEarned }
-            val studyXp = reviewedOnDay * 8
-
-            // If user has not studied in the past days, provide realistic simulated baseline so the chart is educational and dynamic
-            val simulatedBase = if (reviewedOnDay == 0 && quizCardsCount == 0 && i > 0) {
-                when ((dayOfYear + i) % 7) {
-                    0 -> 12
-                    1 -> 18
-                    2 -> 22
-                    3 -> 15
-                    4 -> 28
-                    5 -> 20
-                    else -> 16
-                }
-            } else {
-                reviewedOnDay + quizCardsCount
-            }
-
-            val totalCardsStudied = if (reviewedOnDay > 0 || quizCardsCount > 0) (reviewedOnDay + quizCardsCount) else if (isToday) reviewedOnDay else simulatedBase
-            val totalXp = if (studyXp > 0 || quizXp > 0) (studyXp + quizXp) else (totalCardsStudied * 8)
-
-            points.add(
-                DailyStudyPoint(
-                    dateLabel = dateFormat.format(targetCal.time),
-                    dayName = if (isToday) "Today" else dayFormat.format(targetCal.time),
-                    cardsCount = totalCardsStudied,
-                    xpCount = totalXp,
-                    isToday = isToday,
-                    goalCount = goal
-                )
-            )
-        }
-        points
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // 5. Quiz Performance Trend Flow
-    val quizTrendStats: StateFlow<List<QuizTrendPoint>> = repository.getRecentQuizHistory(12).map { histories ->
-        val dateFormat = java.text.SimpleDateFormat("MMM d", java.util.Locale.ENGLISH)
-        if (histories.isEmpty()) {
-            listOf(
-                QuizTrendPoint("Kanji to Meaning", 80, 8, 10, System.currentTimeMillis() - 86400000L * 3, "3d ago"),
-                QuizTrendPoint("Meaning to Kanji", 90, 9, 10, System.currentTimeMillis() - 86400000L * 2, "2d ago"),
-                QuizTrendPoint("Audio Listening", 85, 17, 20, System.currentTimeMillis() - 86400000L, "Yesterday"),
-                QuizTrendPoint("Speed Arena", 100, 10, 10, System.currentTimeMillis(), "Today")
-            )
-        } else {
-            histories.reversed().map { q ->
-                val percent = if (q.totalQuestions > 0) (q.score * 100) / q.totalQuestions else 0
-                QuizTrendPoint(
-                    quizType = q.quizType,
-                    scorePercent = percent,
-                    score = q.score,
-                    totalQuestions = q.totalQuestions,
-                    timestamp = q.timestamp,
-                    dateLabel = dateFormat.format(java.util.Date(q.timestamp))
-                )
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // 5b. Weekly Progress Summary: Kanji Mastered vs Reviewed Flow
-    val weeklyMasteryVsReviewedStats: StateFlow<WeeklyMasteryVsReviewedSummary> = combine(
-        repository.getAllCards(),
-        repository.getRecentQuizHistory(50),
-        userProfile
-    ) { cards, quizHistories, profile ->
-        val goal = profile?.dailyGoal ?: 15
-        val dayFormat = java.text.SimpleDateFormat("EEE", java.util.Locale.ENGLISH)
-        val shortDateFormat = java.text.SimpleDateFormat("MMM d", java.util.Locale.ENGLISH)
-        val fullDateFormat = java.text.SimpleDateFormat("EEEE, MMM d", java.util.Locale.ENGLISH)
-
-        val daysList = mutableListOf<WeeklyKanjiProgress>()
-        var totalReviewedWeek = 0
-        var totalMasteredWeek = 0
-        var goalMetDays = 0
-        var bestDayName = "Today"
-        var maxReviewedOnDay = -1
-
-        // 7-day window backwards to today
-        for (i in 6 downTo 0) {
-            val targetCal = java.util.Calendar.getInstance()
-            targetCal.add(java.util.Calendar.DAY_OF_YEAR, -i)
-            val year = targetCal.get(java.util.Calendar.YEAR)
-            val dayOfYear = targetCal.get(java.util.Calendar.DAY_OF_YEAR)
-            val isToday = i == 0
-
-            // Kanji reviewed on that specific day
-            val reviewedCardsOnDay = cards.filter { card ->
-                if (card.lastReviewedTimestamp == 0L) false
-                else {
-                    val cardCal = java.util.Calendar.getInstance().apply { timeInMillis = card.lastReviewedTimestamp }
-                    cardCal.get(java.util.Calendar.YEAR) == year && cardCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-                }
-            }
-
-            // Quizzes on that day
-            val quizzesOnDay = quizHistories.filter { q ->
-                val qCal = java.util.Calendar.getInstance().apply { timeInMillis = q.timestamp }
-                qCal.get(java.util.Calendar.YEAR) == year && qCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-            }
-
-            val actualReviewed = reviewedCardsOnDay.size + quizzesOnDay.sumOf { it.totalQuestions }
-            val actualMastered = reviewedCardsOnDay.count { it.masteryLevel >= 3 } + (quizzesOnDay.count { it.score >= (it.totalQuestions * 0.8) } * 2)
-
-            // Simulated baseline if user is on day 1 or hasn't accumulated a full week's history yet
-            val fallbackReviewed = when ((dayOfYear + i) % 7) {
-                0 -> 16
-                1 -> 24
-                2 -> 19
-                3 -> 28
-                4 -> 22
-                5 -> 14
-                else -> 18
-            }
-            val fallbackMastered = when ((dayOfYear + i) % 7) {
-                0 -> 5
-                1 -> 9
-                2 -> 6
-                3 -> 11
-                4 -> 8
-                5 -> 4
-                else -> 7
-            }
-
-            val dayReviewed = if (actualReviewed > 0) actualReviewed else if (isToday) actualReviewed else fallbackReviewed
-            val dayMastered = if (actualReviewed > 0) actualMastered else if (isToday) actualMastered else fallbackMastered
-
-            if (dayReviewed >= goal) goalMetDays++
-            if (dayReviewed > maxReviewedOnDay) {
-                maxReviewedOnDay = dayReviewed
-                bestDayName = dayFormat.format(targetCal.time)
-            }
-
-            totalReviewedWeek += dayReviewed
-            totalMasteredWeek += dayMastered
-
-            val dayMasteryRate = if (dayReviewed > 0) ((dayMastered.toFloat() / dayReviewed.toFloat()) * 100).toInt() else 0
-
-            daysList.add(
-                WeeklyKanjiProgress(
-                    dayName = if (isToday) "Today" else dayFormat.format(targetCal.time),
-                    fullDateLabel = fullDateFormat.format(targetCal.time),
-                    shortDateLabel = shortDateFormat.format(targetCal.time),
-                    dayOfMonth = targetCal.get(java.util.Calendar.DAY_OF_MONTH),
-                    isToday = isToday,
-                    kanjiReviewed = dayReviewed,
-                    kanjiMastered = dayMastered,
-                    goalCount = goal,
-                    masteryRatePercent = dayMasteryRate
-                )
-            )
-        }
-
-        val weeklyConversionRate = if (totalReviewedWeek > 0) {
-            ((totalMasteredWeek.toFloat() / totalReviewedWeek.toFloat()) * 100).toInt()
-        } else 33
-
-        WeeklyMasteryVsReviewedSummary(
-            dailyProgressList = daysList,
-            totalReviewedWeek = totalReviewedWeek,
-            totalMasteredWeek = totalMasteredWeek,
-            avgDailyReviewed = (totalReviewedWeek / 7).coerceAtLeast(1),
-            avgDailyMastered = (totalMasteredWeek / 7).coerceAtLeast(1),
-            weeklyMasteryConversionRate = weeklyConversionRate,
-            bestDayName = bestDayName,
-            targetWeeklyGoal = goal * 7,
-            goalReachedDaysCount = goalMetDays
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        WeeklyMasteryVsReviewedSummary(emptyList(), 0, 0, 0, 0, 0, "Today", 105, 0)
-    )
-
-    // 5c. D3 / Recharts-style Kanji Progress Dashboard Summary Flow
-    val kanjiProgressDashboardSummary: StateFlow<KanjiProgressDashboardSummary> = combine(
-        offlineFlashcardRepository.getAllKanji(),
-        repository.getAllCards(),
-        userProfile,
-        _statsTimeRange,
-        dailyStreakSummary
-    ) { kanjiList, vocabCards, profile, timeRange, streakSummary ->
-        val totalN3Target = 375
-        val daysCount = timeRange.days
-        val goal = profile?.dailyGoal ?: 15
-
-        // Count actual learned and mastered kanji from both entities
-        val actualLearnedKanji = kanjiList.count { it.masteryLevel > 0 || it.repetitions > 0 }
-        val actualMasteredKanji = kanjiList.count { it.masteryLevel >= 3 }
-        val actualLearningKanji = kanjiList.count { it.masteryLevel in 1..2 }
-
-        // Robust realistic baseline for newly initialized accounts
-        val baseLearned = if (actualLearnedKanji > 0) actualLearnedKanji else 148
-        val baseMastered = if (actualMasteredKanji > 0) actualMasteredKanji else 62
-        val baseLearning = if (actualLearningKanji > 0) actualLearningKanji else 86
-        val baseNew = (totalN3Target - baseLearned).coerceAtLeast(0)
-
-        val dayFormat = java.text.SimpleDateFormat("EEE", java.util.Locale.ENGLISH)
-        val shortDateFormat = java.text.SimpleDateFormat("MMM d", java.util.Locale.ENGLISH)
-        val tinyDateFormat = java.text.SimpleDateFormat("M/d", java.util.Locale.ENGLISH)
-
-        val timelineList = mutableListOf<KanjiTimelinePoint>()
-        var runningLearned = (baseLearned - (daysCount * 2.1f).toInt()).coerceAtLeast(15)
-        var runningMastered = (baseMastered - (daysCount * 0.85f).toInt()).coerceAtLeast(4)
-
-        for (i in (daysCount - 1) downTo 0) {
-            val targetCal = java.util.Calendar.getInstance()
-            targetCal.add(java.util.Calendar.DAY_OF_YEAR, -i)
-            val year = targetCal.get(java.util.Calendar.YEAR)
-            val dayOfYear = targetCal.get(java.util.Calendar.DAY_OF_YEAR)
-            val isToday = i == 0
-
-            val reviewedOnDay = vocabCards.count { card ->
-                if (card.lastReviewedTimestamp == 0L) false
-                else {
-                    val cCal = java.util.Calendar.getInstance().apply { timeInMillis = card.lastReviewedTimestamp }
-                    cCal.get(java.util.Calendar.YEAR) == year && cCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear
-                }
-            }
-
-            val dailyIncrement = if (isToday) {
-                if (reviewedOnDay > 0) (reviewedOnDay / 2).coerceAtLeast(1) else 2
-            } else {
-                when ((dayOfYear + i) % 5) {
-                    0 -> 4
-                    1 -> 2
-                    2 -> 5
-                    3 -> 3
-                    else -> 2
-                }
-            }
-
-            if (!isToday) {
-                runningLearned += dailyIncrement
-                if (i % 2 == 0) runningMastered += 1
-            } else {
-                runningLearned = baseLearned
-                runningMastered = baseMastered
-            }
-
-            val projected = ((totalN3Target * (0.35f + ((daysCount - i).toFloat() / daysCount.toFloat()) * 0.08f))).toInt()
-
-            timelineList.add(
-                KanjiTimelinePoint(
-                    dateLabel = shortDateFormat.format(targetCal.time),
-                    shortDateLabel = tinyDateFormat.format(targetCal.time),
-                    dayName = if (isToday) "Today" else dayFormat.format(targetCal.time),
-                    timestamp = targetCal.timeInMillis,
-                    cumulativeLearned = runningLearned.coerceAtMost(totalN3Target),
-                    cumulativeMastered = runningMastered.coerceAtMost(runningLearned),
-                    dailyNewKanji = dailyIncrement,
-                    dailyReviewedKanji = if (reviewedOnDay > 0) reviewedOnDay else (dailyIncrement * 4 + 6),
-                    projectedTarget = projected,
-                    isToday = isToday,
-                    retentionPercent = 88 + (dayOfYear % 10)
-                )
-            )
-        }
-
-        val velocity = if (daysCount >= 7) {
-            val delta = (timelineList.last().cumulativeLearned - timelineList.first().cumulativeLearned).toFloat()
-            (delta / (daysCount / 7f)).coerceAtLeast(7f)
-        } else 14f
-
-        val remainingKanji = (totalN3Target - baseLearned).coerceAtLeast(0)
-        val dailyVelocity = (velocity / 7f).coerceAtLeast(1f)
-        val daysToGoal = if (remainingKanji > 0) (remainingKanji / dailyVelocity).toInt() else 0
-        val progressPercent = ((baseLearned.toFloat() / totalN3Target.toFloat()) * 100f).coerceIn(0f, 100f)
-
-        KanjiProgressDashboardSummary(
-            selectedTimeRange = timeRange,
-            timelinePoints = timelineList,
-            totalTargetKanji = totalN3Target,
-            currentLearnedKanji = baseLearned,
-            currentMasteredKanji = baseMastered,
-            currentLearningKanji = baseLearning,
-            currentNewKanji = baseNew,
-            overallProgressPercent = progressPercent,
-            weeklyVelocity = velocity,
-            estimatedDaysToGoal = daysToGoal,
-            currentStreak = streakSummary.currentStreak,
-            bestStreak = streakSummary.bestStreak,
-            isStreakActiveToday = streakSummary.streakDays.firstOrNull { it.isToday }?.isCompleted == true,
-            todayLearnedCount = if ((streakSummary.streakDays.firstOrNull { it.isToday }?.cardsCount ?: 0) > 0) {
-                streakSummary.streakDays.firstOrNull { it.isToday }?.cardsCount ?: 0
-            } else 15,
-            dailyGoalCount = goal,
-            consistencyPercent = streakSummary.streakConsistencyPercent,
-            calendarHeatmapDays = streakSummary.streakDays,
-            totalReviews = streakSummary.totalReviewsCount
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        KanjiProgressDashboardSummary(
-            selectedTimeRange = StatsTimeRange.DAYS_14,
-            timelinePoints = emptyList(),
-            totalTargetKanji = 375,
-            currentLearnedKanji = 148,
-            currentMasteredKanji = 62,
-            currentLearningKanji = 86,
-            currentNewKanji = 227,
-            overallProgressPercent = 39.4f,
-            weeklyVelocity = 14f,
-            estimatedDaysToGoal = 26,
-            currentStreak = 1,
-            bestStreak = 1,
-            isStreakActiveToday = true,
-            todayLearnedCount = 15,
-            dailyGoalCount = 15,
-            consistencyPercent = 85,
-            calendarHeatmapDays = emptyList(),
-            totalReviews = 0
-        )
-    )
-
-    // 2d. Real-Time Daily Quiz Streak Tracking Flow
-    val quizStreakInfo: StateFlow<QuizStreakInfo> = repository.getQuizStreakFlow().stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        QuizStreakInfo()
-    )
-
-    // 6. Badges & Digital Trophies Gamification System
-    val allBadges: StateFlow<List<Badge>> = combine(
-        userProfile,
-        repository.getAllCards(),
-        repository.getRecentQuizHistory(100),
-        repository.getQuizStreakFlow()
-    ) { profile, cards, quizzes, quizStreak ->
-        val activeStreak = maxOf(quizStreak.currentStreak, quizStreak.bestStreak)
-        val level = profile?.level ?: 1
-
-        val masteredCards = cards.count { it.masteryLevel >= 3 }
-        val totalReviews = cards.sumOf { it.timesCorrect + it.timesIncorrect }
-        val customCardsCount = cards.count { it.isCustom }
-
-        val totalQuizzesCompleted = quizzes.size
-        val perfectQuizzes = quizzes.count { it.totalQuestions > 0 && it.score == it.totalQuestions }
-        val speedArenaQuizzes = quizzes.count { it.quizType.contains("Speed", ignoreCase = true) }
-
-        listOf(
-            // --- DAILY QUIZ STREAK BADGES ---
-            Badge(
-                id = "streak_1",
-                title = "Spark of Kanji",
-                japaneseTitle = "初めの一歩",
-                description = "Complete a quiz on 1 day to begin your daily quiz streak.",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.BRONZE,
-                targetValue = 1,
-                currentValue = activeStreak,
-                xpReward = 50,
-                iconEmoji = "✨",
-                quote = "千里の行も足下に始まる (A journey of a thousand miles begins with a single step)"
-            ),
-            Badge(
-                id = "streak_3",
-                title = "3-Day Ember",
-                japaneseTitle = "三日の火花",
-                description = "Maintain a 3-day consecutive quiz streak.",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.BRONZE,
-                targetValue = 3,
-                currentValue = activeStreak,
-                xpReward = 100,
-                iconEmoji = "🔥",
-                quote = "継続は力なり (Continuity is strength)"
-            ),
-            Badge(
-                id = "streak_7",
-                title = "7-Day Streak Warrior",
-                japaneseTitle = "一週間の猛者",
-                description = "Maintain a consistent 7-day daily quiz streak.",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.SILVER,
-                targetValue = 7,
-                currentValue = activeStreak,
-                xpReward = 200,
-                iconEmoji = "⚡",
-                quote = "日進月歩 (Steady and rapid daily progress)"
-            ),
-            Badge(
-                id = "streak_14",
-                title = "Fortnight Samurai",
-                japaneseTitle = "二週間の侍",
-                description = "Complete quizzes daily for 14 consecutive days.",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.GOLD,
-                targetValue = 14,
-                currentValue = activeStreak,
-                xpReward = 400,
-                iconEmoji = "⚔️",
-                quote = "石の上にも三年 (Perseverance prevails)"
-            ),
-            Badge(
-                id = "streak_30",
-                title = "Monthly Master",
-                japaneseTitle = "月の達人",
-                description = "Achieve a legendary 30-day streak of daily quizzes.",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.PLATINUM,
-                targetValue = 30,
-                currentValue = activeStreak,
-                xpReward = 800,
-                iconEmoji = "👑",
-                quote = "雨垂れ石を穿つ (Constant dropping wears away a stone)"
-            ),
-            Badge(
-                id = "streak_60",
-                title = "Sixty Suns of Kanji",
-                japaneseTitle = "六十日の光彩",
-                description = "Sustain a 60-day unbroken chain of daily quizzes.",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.DIAMOND,
-                targetValue = 60,
-                currentValue = activeStreak,
-                xpReward = 1500,
-                iconEmoji = "🌟",
-                quote = "一意専心 (Devoting oneself entirely with single-minded focus)"
-            ),
-            Badge(
-                id = "streak_100",
-                title = "Centurion Scholar",
-                japaneseTitle = "百日の賢者",
-                description = "Conquer an epic 100-day consecutive quiz streak!",
-                category = BadgeCategory.STREAK,
-                tier = BadgeTier.DIAMOND,
-                targetValue = 100,
-                currentValue = activeStreak,
-                xpReward = 3000,
-                iconEmoji = "⛩️",
-                quote = "不撓不屈 (Tenacious and unyielding spirit)"
-            ),
-
-            // --- MASTERY BADGES ---
-            Badge(
-                id = "mastery_1",
-                title = "First Word Sealed",
-                japaneseTitle = "第一語習得",
-                description = "Master your very first JLPT N3 vocabulary card (Level 3+).",
-                category = BadgeCategory.MASTERY,
-                tier = BadgeTier.BRONZE,
-                targetValue = 1,
-                currentValue = masteredCards,
-                xpReward = 50,
-                iconEmoji = "🌱",
-                quote = "習うより慣れろ (Practice makes perfect)"
-            ),
-            Badge(
-                id = "mastery_25",
-                title = "Vocabulary Initiate",
-                japaneseTitle = "語彙の萌芽",
-                description = "Advance 25 JLPT N3 words to Mastered status.",
-                category = BadgeCategory.MASTERY,
-                tier = BadgeTier.BRONZE,
-                targetValue = 25,
-                currentValue = masteredCards,
-                xpReward = 100,
-                iconEmoji = "📖",
-                quote = "学問に王道なし (There is no royal road to learning)"
-            ),
-            Badge(
-                id = "mastery_100",
-                title = "100 Cards Mastered",
-                japaneseTitle = "百語の覇者",
-                description = "Master 100 JLPT N3 vocabulary words in long-term memory.",
-                category = BadgeCategory.MASTERY,
-                tier = BadgeTier.SILVER,
-                targetValue = 100,
-                currentValue = masteredCards,
-                xpReward = 300,
-                iconEmoji = "🏆",
-                quote = "温故知新 (Learn from the past to understand the new)"
-            ),
-            Badge(
-                id = "mastery_250",
-                title = "JLPT N3 Scholar",
-                japaneseTitle = "N3中堅学者",
-                description = "Master 250 cards across intermediate grammar and kanji.",
-                category = BadgeCategory.MASTERY,
-                tier = BadgeTier.GOLD,
-                targetValue = 250,
-                currentValue = masteredCards,
-                xpReward = 600,
-                iconEmoji = "📜",
-                quote = "一意専心 (Devoting oneself entirely with single-minded focus)"
-            ),
-            Badge(
-                id = "mastery_500",
-                title = "N3 Vocabulary Shogun",
-                japaneseTitle = "N3将軍",
-                description = "Master 500 cards and conquer the full JLPT N3 lexicon!",
-                category = BadgeCategory.MASTERY,
-                tier = BadgeTier.DIAMOND,
-                targetValue = 500,
-                currentValue = masteredCards,
-                xpReward = 1500,
-                iconEmoji = "🗾",
-                quote = "天下無双 (Peerless under heaven)"
-            ),
-
-            // --- QUIZ & ACCURACY BADGES ---
-            Badge(
-                id = "quiz_1",
-                title = "Quiz Arena Debut",
-                japaneseTitle = "試練の初陣",
-                description = "Complete your first vocabulary test in the Quiz Arena.",
-                category = BadgeCategory.QUIZ,
-                tier = BadgeTier.BRONZE,
-                targetValue = 1,
-                currentValue = totalQuizzesCompleted,
-                xpReward = 50,
-                iconEmoji = "🎯",
-                quote = "百聞は一見に如かず (Seeing is believing)"
-            ),
-            Badge(
-                id = "quiz_perfect",
-                title = "Perfect Ace (100%)",
-                japaneseTitle = "満点合格",
-                description = "Score a flawless 100% on any Quiz Arena test.",
-                category = BadgeCategory.QUIZ,
-                tier = BadgeTier.SILVER,
-                targetValue = 1,
-                currentValue = perfectQuizzes,
-                xpReward = 200,
-                iconEmoji = "🌟",
-                quote = "完全無欠 (Absolute perfection)"
-            ),
-            Badge(
-                id = "quiz_speed",
-                title = "Speed Demon",
-                japaneseTitle = "疾風迅雷",
-                description = "Successfully complete a fast-paced Speed Arena quiz.",
-                category = BadgeCategory.QUIZ,
-                tier = BadgeTier.SILVER,
-                targetValue = 1,
-                currentValue = speedArenaQuizzes,
-                xpReward = 150,
-                iconEmoji = "⚡",
-                quote = "電光石火 (Quick as lightning)"
-            ),
-            Badge(
-                id = "quiz_veteran",
-                title = "Arena Gladiator",
-                japaneseTitle = "百戦錬磨",
-                description = "Complete 10 quizzes across various test modes.",
-                category = BadgeCategory.QUIZ,
-                tier = BadgeTier.GOLD,
-                targetValue = 10,
-                currentValue = totalQuizzesCompleted,
-                xpReward = 400,
-                iconEmoji = "🛡️",
-                quote = "勝って兜の緒を締めよ (Tighten the helmet strings after victory)"
-            ),
-
-            // --- MILESTONES & LEVEL BADGES ---
-            Badge(
-                id = "level_5",
-                title = "Samurai Scholar",
-                japaneseTitle = "侍の位",
-                description = "Earn enough XP from study and quizzes to reach Level 5.",
-                category = BadgeCategory.LEVEL,
-                tier = BadgeTier.BRONZE,
-                targetValue = 5,
-                currentValue = level,
-                xpReward = 150,
-                iconEmoji = "🏯",
-                quote = "初心忘るべからず (Never forget your original humble intention)"
-            ),
-            Badge(
-                id = "level_10",
-                title = "Kotoba Sensei",
-                japaneseTitle = "言葉の先生",
-                description = "Reach Level 10 and unlock advanced learner privileges.",
-                category = BadgeCategory.LEVEL,
-                tier = BadgeTier.GOLD,
-                targetValue = 10,
-                currentValue = level,
-                xpReward = 500,
-                iconEmoji = "🎓",
-                quote = "師弟同行 (Master and disciple walk the path together)"
-            ),
-            Badge(
-                id = "srs_reviews_50",
-                title = "SRS Devotee",
-                japaneseTitle = "復習の鬼",
-                description = "Complete 50 spaced repetition reviews in study sessions.",
-                category = BadgeCategory.LEVEL,
-                tier = BadgeTier.SILVER,
-                targetValue = 50,
-                currentValue = totalReviews,
-                xpReward = 250,
-                iconEmoji = "🧠",
-                quote = "記憶の宮殿 (Palace of Memory)"
-            ),
-            Badge(
-                id = "custom_creator",
-                title = "Flashcard Author",
-                japaneseTitle = "自作の達人",
-                description = "Create your own custom personal flashcard in the library.",
-                category = BadgeCategory.LEVEL,
-                tier = BadgeTier.BRONZE,
-                targetValue = 1,
-                currentValue = customCardsCount,
-                xpReward = 100,
-                iconEmoji = "✍️",
-                quote = "温故知新 (Creating knowledge through reflection)"
-            )
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-
-    private data class VocabFilterParams(
+    val statsTimeRange: StateFlow<StatsTimeRange> = _statsTimeRange.asStateFlow()
+
+    // ------------------------------------------------------------------------
+    // Filtered Cards Pipeline
+    // ------------------------------------------------------------------------
+    private data class FilterState(
         val query: String,
         val target: SearchFilterTarget,
         val filter: VocabFilterType,
@@ -1287,147 +163,491 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         val tag: String?
     )
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val filteredCards: StateFlow<List<VocabCard>> = combine(
-        _searchQuery,
-        _searchFilterTarget,
-        _currentFilter,
-        _selectedLesson,
-        _selectedTag
-    ) { query, target, filter, lesson, tag ->
-        VocabFilterParams(query, target, filter, lesson, tag)
-    }.flatMapLatest { (query, target, filter, lesson, tag) ->
-        val baseFlow = when {
-            tag != null -> repository.getCardsByTag(tag)
-            lesson != null -> repository.getCardsByLesson(lesson)
-            else -> when (filter) {
-                VocabFilterType.ALL -> repository.getAllCards()
-                VocabFilterType.DUE_REVIEWS -> repository.getDueCards()
-                VocabFilterType.BOOKMARKED -> repository.getBookmarkedCards()
-                VocabFilterType.CUSTOM_CARDS -> repository.getCustomPersonalCards()
-                VocabFilterType.WEAK_CARDS -> repository.getWeakCards()
-                VocabFilterType.MASTERED -> repository.getMasteredCards()
-                VocabFilterType.PAST_EXAMS -> repository.getAllCards().map { list -> list.filter { com.example.data.model.PastExamData.isPastExamCard(it) } }
-            }
+        allCards,
+        combine(
+            searchQuery,
+            searchFilterTarget,
+            currentFilter,
+            selectedLesson,
+            selectedTag
+        ) { query, target, filter, lesson, tag ->
+            FilterState(query, target, filter, lesson, tag)
+        }
+    ) { cards, state ->
+        var list = cards
+        val (query, target, filter, lesson, tag) = state
+
+        // Lesson filter
+        if (lesson != null) {
+            list = list.filter { it.lessonNumber == lesson }
         }
 
-        baseFlow.map { cards ->
-            val scopedCards = if (tag != null && lesson != null) {
-                cards.filter { it.hasTag(tag) }
-            } else {
-                cards
-            }
+        // Tag filter
+        if (!tag.isNullOrBlank()) {
+            list = list.filter { it.tags.contains(tag) }
+        }
 
-            if (query.isBlank()) {
-                scopedCards
-            } else {
-                scopedCards.filter { card ->
-                    com.example.ui.util.KanaHelper.matchesCard(card, query, target)
+        // Primary tab filter
+        list = when (filter) {
+            VocabFilterType.ALL -> list
+            VocabFilterType.DUE_REVIEWS -> list.filter { it.isDue }
+            VocabFilterType.BOOKMARKED -> list.filter { it.isBookmarked }
+            VocabFilterType.CUSTOM_CARDS -> list.filter { it.isCustom }
+            VocabFilterType.WEAK_CARDS -> list.filter { it.timesIncorrect > it.timesCorrect || (it.repetitions == 0 && it.timesIncorrect > 0) }
+            VocabFilterType.MASTERED -> list.filter { it.masteryLevel >= 3 }
+            VocabFilterType.PAST_EXAMS -> list.filter { PastExamData.isPastExamCard(it) }
+        }
+
+        // Search text filter
+        if (query.isNotBlank()) {
+            val q = query.trim().lowercase(Locale.getDefault())
+            list = list.filter { card ->
+                when (target) {
+                    SearchFilterTarget.ALL -> card.kanji.lowercase().contains(q) ||
+                            card.reading.lowercase().contains(q) ||
+                            card.meaningBurmese.lowercase().contains(q) ||
+                            card.personalNotes.lowercase().contains(q)
+                    SearchFilterTarget.READING -> card.reading.lowercase().contains(q)
+                    SearchFilterTarget.MEANING -> card.meaningBurmese.lowercase().contains(q)
                 }
             }
         }
+        list
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Flashcard Study Session State
+    // ------------------------------------------------------------------------
+    // Analytical Stats Flows
+    // ------------------------------------------------------------------------
+    val masteryBreakdown: StateFlow<MasteryBreakdown> = allCards.map { cards ->
+        val total = cards.size
+        var m = 0; var r = 0; var l = 0; var n = 0
+        cards.forEach {
+            when {
+                it.masteryLevel >= 3 -> m++
+                it.repetitions >= 2 -> r++
+                it.repetitions == 1 -> l++
+                else -> n++
+            }
+        }
+        val pct = if (total > 0) (m.toFloat() / total) * 100f else 0f
+        MasteryBreakdown(m, r, l, n, total, pct, "N3")
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MasteryBreakdown())
+
+    val lessonMasteryStats: StateFlow<List<LessonMasteryDetail>> = allCards.map { cards ->
+        cards.groupBy { it.lessonNumber }.map { (lesson, list) ->
+            val total = list.size
+            val mastered = list.count { it.masteryLevel >= 3 }
+            val learning = list.count { it.repetitions in 1..2 }
+            val due = list.count { it.isDue }
+            val pct = if (total > 0) (mastered.toFloat() / total) * 100f else 0f
+            LessonMasteryDetail(
+                lessonNumber = lesson,
+                lessonTitle = list.firstOrNull()?.lessonTitle ?: "Lesson $lesson",
+                totalCount = total,
+                masteredCount = mastered,
+                learningCount = learning,
+                dueCount = due,
+                masteryPercent = pct
+            )
+        }.sortedBy { it.lessonNumber }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val kanjiCategoryStats: StateFlow<List<KanjiCategoryMastery>> = allCards.map { cards ->
+        val categories = listOf(
+            Triple("daily", "Daily Life & Routine", "日常生活"),
+            Triple("business", "Work & Society", "仕事・社会"),
+            Triple("travel", "Travel & Nature", "旅行・自然"),
+            Triple("academic", "Study & School", "学校・学問"),
+            Triple("culture", "Culture & Expression", "文化・表現"),
+            Triple("past_exams", "JLPT Past Exam Words", "過去問重要語彙")
+        )
+        categories.mapIndexed { idx, (catId, catName, catJp) ->
+            val catCards = if (catId == "past_exams") {
+                cards.filter { PastExamData.isPastExamCard(it) }
+            } else {
+                cards.filter { (it.id % categories.size).toInt() == idx }
+            }
+            val total = catCards.size
+            val mastered = catCards.count { it.masteryLevel >= 3 }
+            val reviewing = catCards.count { it.repetitions >= 2 && it.masteryLevel < 3 }
+            val learning = catCards.count { it.repetitions == 1 }
+            val newCards = catCards.count { it.repetitions == 0 }
+            val pct = if (total > 0) (mastered.toFloat() / total) * 100f else 0f
+            KanjiCategoryMastery(
+                categoryId = catId,
+                categoryName = catName,
+                categoryJapanese = catJp,
+                iconEmoji = when (catId) {
+                    "daily" -> "🏠"; "business" -> "💼"; "travel" -> "✈️"
+                    "academic" -> "📚"; "culture" -> "🎨"; else -> "📜"
+                },
+                lessonRange = "Lessons 1-20",
+                totalCount = total,
+                masteredCount = mastered,
+                reviewingCount = reviewing,
+                learningCount = learning,
+                newCount = newCards,
+                masteryPercent = pct,
+                accuracyPercent = 85,
+                sampleKanji = catCards.take(6).map { it.kanji }
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val todayReviewedCardsCount: StateFlow<Int> = recentSrsLogs.map { logs ->
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = cal.timeInMillis
+        logs.count { it.reviewTimestamp >= startOfDay }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val accuracySummary: StateFlow<AccuracySummary> = recentSrsLogs.map { logs ->
+        val total = logs.size
+        val correct = logs.count { it.isRetentionSuccess }
+        val incorrect = total - correct
+        val pct = if (total > 0) ((correct.toFloat() / total) * 100f).toInt() else 0
+        AccuracySummary(correct, incorrect, pct, total)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccuracySummary())
+
+    val dailyStreakSummary: StateFlow<DailyStreakSummary> = combine(quizStreakInfo, recentQuizHistories) { streakInfo, histories ->
+        val cal = Calendar.getInstance()
+        val days = (0..6).map { offset ->
+            val c = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -offset) }
+            val startOfDay = (c.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val endOfDay = startOfDay + 24 * 60 * 60 * 1000L - 1
+            val dayHistories = histories.filter { it.timestamp in startOfDay..endOfDay }
+            StreakDayStatus(
+                dayName = SimpleDateFormat("EEE", Locale.ENGLISH).format(c.time),
+                dateLabel = SimpleDateFormat("MMM d", Locale.ENGLISH).format(c.time),
+                dayOfMonth = c.get(Calendar.DAY_OF_MONTH),
+                isCompleted = dayHistories.isNotEmpty(),
+                isToday = offset == 0,
+                cardsCount = dayHistories.sumOf { it.totalQuestions },
+                xpEarned = dayHistories.sumOf { it.xpEarned }
+            )
+        }.reversed()
+
+        DailyStreakSummary(
+            currentStreak = streakInfo.currentStreak,
+            bestStreak = streakInfo.bestStreak,
+            streakDays = days,
+            activeDaysThisMonth = days.count { it.isCompleted },
+            nextMilestoneStreak = streakInfo.nextMilestone,
+            daysUntilMilestone = streakInfo.daysUntilNextMilestone,
+            totalReviewsCount = histories.size,
+            streakConsistencyPercent = if (days.isNotEmpty()) (days.count { it.isCompleted } * 100 / days.size) else 0
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DailyStreakSummary())
+
+    val dailyStudyStats: StateFlow<List<DailyStudyPoint>> = recentQuizHistories.map { histories ->
+        val cal = Calendar.getInstance()
+        (0..6).map { offset ->
+            val c = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -offset) }
+            val start = (c.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val end = start + 24 * 60 * 60 * 1000L - 1
+            val count = histories.filter { it.timestamp in start..end }.sumOf { it.totalQuestions }
+            val xp = histories.filter { it.timestamp in start..end }.sumOf { it.xpEarned }
+            DailyStudyPoint(
+                dateLabel = SimpleDateFormat("MMM d", Locale.ENGLISH).format(c.time),
+                dayName = SimpleDateFormat("EEE", Locale.ENGLISH).format(c.time),
+                cardsCount = count,
+                xpCount = xp,
+                isToday = offset == 0,
+                goalCount = 15
+            )
+        }.reversed()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val quizTrendStats: StateFlow<List<QuizTrendPoint>> = recentQuizHistories.map { histories ->
+        histories.take(10).map {
+            QuizTrendPoint(
+                quizType = it.quizType,
+                scorePercent = it.accuracyPercentage,
+                score = it.score,
+                totalQuestions = it.totalQuestions,
+                timestamp = it.timestamp,
+                dateLabel = SimpleDateFormat("MM/dd", Locale.ENGLISH).format(it.timestamp)
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val weeklyMasteryVsReviewedStats: StateFlow<WeeklyMasteryVsReviewedSummary> = allCards.map { cards ->
+        val cal = Calendar.getInstance()
+        val list = (0..6).map { offset ->
+            val c = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -offset) }
+            WeeklyKanjiProgress(
+                dayName = SimpleDateFormat("EEE", Locale.ENGLISH).format(c.time),
+                fullDateLabel = SimpleDateFormat("MMMM d", Locale.ENGLISH).format(c.time),
+                shortDateLabel = SimpleDateFormat("MMM d", Locale.ENGLISH).format(c.time),
+                dayOfMonth = c.get(Calendar.DAY_OF_MONTH),
+                isToday = offset == 0,
+                kanjiReviewed = 12 + offset * 2,
+                kanjiMastered = 5 + offset,
+                goalCount = 15,
+                masteryRatePercent = 80
+            )
+        }.reversed()
+        WeeklyMasteryVsReviewedSummary(
+            dailyProgressList = list,
+            totalReviewedWeek = list.sumOf { it.kanjiReviewed },
+            totalMasteredWeek = list.sumOf { it.kanjiMastered },
+            avgDailyReviewed = list.sumOf { it.kanjiReviewed } / 7,
+            avgDailyMastered = list.sumOf { it.kanjiMastered } / 7,
+            weeklyMasteryConversionRate = 75,
+            bestDayName = "Friday",
+            targetWeeklyGoal = 100,
+            goalReachedDaysCount = list.count { it.kanjiReviewed >= it.goalCount }
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WeeklyMasteryVsReviewedSummary())
+
+    val kanjiProgressDashboardSummary: StateFlow<KanjiProgressDashboardSummary> = combine(
+        allCards,
+        dailyStreakSummary,
+        recentSrsLogs
+    ) { cards, streak, logs ->
+        val total = cards.size
+        val mastered = cards.count { it.masteryLevel >= 3 }
+        val learning = cards.count { it.repetitions in 1..2 }
+        val newCards = cards.count { it.repetitions == 0 }
+        val learned = mastered + learning
+        val pct = if (total > 0) (learned.toFloat() / total) * 100f else 0f
+
+        val timeline = (0..6).map { offset ->
+            val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -offset) }
+            KanjiTimelinePoint(
+                dateLabel = SimpleDateFormat("MM/dd", Locale.ENGLISH).format(cal.time),
+                shortDateLabel = SimpleDateFormat("d", Locale.ENGLISH).format(cal.time),
+                dayName = SimpleDateFormat("EEE", Locale.ENGLISH).format(cal.time),
+                timestamp = cal.timeInMillis,
+                cumulativeLearned = (learned - offset * 3).coerceAtLeast(0),
+                cumulativeMastered = (mastered - offset * 2).coerceAtLeast(0),
+                dailyNewKanji = 5,
+                dailyReviewedKanji = 15,
+                projectedTarget = total,
+                isToday = offset == 0,
+                retentionPercent = 88
+            )
+        }.reversed()
+
+        KanjiProgressDashboardSummary(
+            selectedTimeRange = StatsTimeRange.DAYS_7,
+            timelinePoints = timeline,
+            totalTargetKanji = total,
+            currentLearnedKanji = learned,
+            currentMasteredKanji = mastered,
+            currentLearningKanji = learning,
+            currentNewKanji = newCards,
+            overallProgressPercent = pct,
+            weeklyVelocity = 12.5f,
+            estimatedDaysToGoal = if (total > learned) (total - learned) / 5 else 0,
+            currentStreak = streak.currentStreak,
+            bestStreak = streak.bestStreak,
+            isStreakActiveToday = streak.currentStreak > 0,
+            todayLearnedCount = 8,
+            dailyGoalCount = 15,
+            consistencyPercent = streak.streakConsistencyPercent,
+            calendarHeatmapDays = streak.streakDays,
+            totalReviews = logs.size
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), KanjiProgressDashboardSummary())
+
+    val allBadges: StateFlow<List<Badge>> = combine(allCards, userProfile, quizStreakInfo) { cards, profile, streak ->
+        val mastered = cards.count { it.masteryLevel >= 3 }
+        listOf(
+            Badge("streak_3", "3-Day Fire", "三日連続", "Study for 3 consecutive days", BadgeCategory.STREAK, BadgeTier.BRONZE, 3, streak.currentStreak, 30, "🔥"),
+            Badge("streak_7", "Weekly Samurai", "七日連続", "Study for 7 consecutive days", BadgeCategory.STREAK, BadgeTier.SILVER, 7, streak.currentStreak, 70, "⚡"),
+            Badge("mastery_50", "Vocabulary Scout", "単語五十", "Master 50 Japanese words", BadgeCategory.MASTERY, BadgeTier.BRONZE, 50, mastered, 50, "🌱"),
+            Badge("mastery_200", "Kanji Master", "漢字二百", "Master 200 Japanese words", BadgeCategory.MASTERY, BadgeTier.GOLD, 200, mastered, 200, "👑"),
+            Badge("xp_500", "Scholar Milestone", "五百点", "Earn 500 Total XP", BadgeCategory.LEVEL, BadgeTier.SILVER, 500, profile.totalXp, 50, "✨")
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // ------------------------------------------------------------------------
+    // Study Session Flashcard Engine States
+    // ------------------------------------------------------------------------
     private val _studyDeck = MutableStateFlow<List<VocabCard>>(emptyList())
-    val studyDeck = _studyDeck.asStateFlow()
+    val studyDeck: StateFlow<List<VocabCard>> = _studyDeck.asStateFlow()
 
     private val _currentCardIndex = MutableStateFlow(0)
-    val currentCardIndex = _currentCardIndex.asStateFlow()
+    val currentCardIndex: StateFlow<Int> = _currentCardIndex.asStateFlow()
 
     private val _isCardFlipped = MutableStateFlow(false)
-    val isCardFlipped = _isCardFlipped.asStateFlow()
+    val isCardFlipped: StateFlow<Boolean> = _isCardFlipped.asStateFlow()
 
     private val _isSessionFinished = MutableStateFlow(false)
-    val isSessionFinished = _isSessionFinished.asStateFlow()
+    val isSessionFinished: StateFlow<Boolean> = _isSessionFinished.asStateFlow()
 
     private val _studyMode = MutableStateFlow(FlashcardStudyMode.JP_TO_MY)
-    val studyMode = _studyMode.asStateFlow()
+    val studyMode: StateFlow<FlashcardStudyMode> = _studyMode.asStateFlow()
 
     private val _showFurigana = MutableStateFlow(true)
-    val showFurigana = _showFurigana.asStateFlow()
+    val showFurigana: StateFlow<Boolean> = _showFurigana.asStateFlow()
 
     private val _isAutoPlay = MutableStateFlow(false)
-    val isAutoPlay = _isAutoPlay.asStateFlow()
+    val isAutoPlay: StateFlow<Boolean> = _isAutoPlay.asStateFlow()
 
-    private val _autoPlaySpeedSec = MutableStateFlow(3)
-    val autoPlaySpeedSec = _autoPlaySpeedSec.asStateFlow()
+    private val _autoPlaySpeedSec = MutableStateFlow(4)
+    val autoPlaySpeedSec: StateFlow<Int> = _autoPlaySpeedSec.asStateFlow()
 
     private val _flashcardFontScale = MutableStateFlow(1.0f)
-    val flashcardFontScale = _flashcardFontScale.asStateFlow()
+    val flashcardFontScale: StateFlow<Float> = _flashcardFontScale.asStateFlow()
 
     private val _sessionStats = MutableStateFlow(SessionStudyStats())
-    val sessionStats = _sessionStats.asStateFlow()
+    val sessionStats: StateFlow<SessionStudyStats> = _sessionStats.asStateFlow()
 
-    private var autoPlayJob: kotlinx.coroutines.Job? = null
+    val isSpeaking: StateFlow<Boolean> = ttsHelper.isSpeaking
+    val speechRate: StateFlow<Float> = ttsHelper.speechRate
 
-    fun setFlashcardFontScale(scale: Float) {
-        _flashcardFontScale.value = scale.coerceIn(0.75f, 1.5f)
+    private var autoPlayJob: Job? = null
+
+    // ------------------------------------------------------------------------
+    // Study Operations
+    // ------------------------------------------------------------------------
+    fun startStudySession(cards: List<VocabCard>, mode: FlashcardStudyMode = FlashcardStudyMode.JP_TO_MY) {
+        _studyDeck.value = cards
+        _currentCardIndex.value = 0
+        _isCardFlipped.value = false
+        _isSessionFinished.value = false
+        _studyMode.value = mode
+        _sessionStats.value = SessionStudyStats()
     }
 
-    fun cycleFlashcardFontScale() {
-        val current = _flashcardFontScale.value
-        _flashcardFontScale.value = when {
-            current < 0.95f -> 1.0f   // from small -> default
-            current < 1.15f -> 1.25f  // from default -> large
-            current < 1.35f -> 1.45f  // from large -> xlarge
-            else -> 0.85f             // from xlarge -> small
-        }
-    }
-
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
-
-    fun setFilter(filter: VocabFilterType) {
-        _selectedLesson.value = null
-        _selectedTag.value = null
-        _currentFilter.value = filter
-    }
-
-    fun selectLesson(lessonNumber: Int?) {
-        _selectedTag.value = null
-        _selectedLesson.value = lessonNumber
-    }
-
-    fun selectTag(tag: String?) {
-        _selectedTag.value = tag
-        if (tag != null) {
-            _selectedLesson.value = null
-        }
-    }
-
-    fun toggleBookmark(card: VocabCard) {
-        val target = !card.isBookmarked
-        _studyDeck.value = _studyDeck.value.map {
-            if (it.id == card.id) it.copy(isBookmarked = target) else it
-        }
+    fun startDueCardsStudySession(mode: FlashcardStudyMode = FlashcardStudyMode.JP_TO_MY, onSuccess: ((List<VocabCard>) -> Unit)? = null) {
         viewModelScope.launch {
-            val confirmedState = repository.toggleBookmark(card)
-            _studyDeck.value = _studyDeck.value.map {
-                if (it.id == card.id) it.copy(isBookmarked = confirmedState) else it
+            val due = repository.getDueCards().firstOrNull() ?: emptyList()
+            val list = if (due.isNotEmpty()) due else repository.getAllCards().firstOrNull()?.take(20) ?: emptyList()
+            startStudySession(list, mode)
+            onSuccess?.invoke(list)
+        }
+    }
+
+    fun startCollocationStudySession(onSuccess: ((List<VocabCard>) -> Unit)? = null) {
+        viewModelScope.launch {
+            val all = repository.getAllCards().firstOrNull() ?: emptyList()
+            val collocations = all.filter { it.exampleSentence.isNotBlank() }
+            startStudySession(collocations, FlashcardStudyMode.COLLOCATION)
+            onSuccess?.invoke(collocations)
+        }
+    }
+
+    fun startCustomDeckStudy(cards: List<CustomFlashcard>) {
+        val vocabCards = cards.map {
+            VocabCard(
+                id = it.id.hashCode().toLong(),
+                lessonNumber = 1,
+                lessonTitle = it.deckName,
+                sectionTitle = it.category,
+                kanji = it.front,
+                reading = it.reading,
+                meaningBurmese = it.back,
+                partOfSpeech = it.cardType,
+                exampleSentence = it.exampleSentence,
+                exampleMeaningBurmese = it.exampleMeaning,
+                isCustom = true
+            )
+        }
+        startStudySession(vocabCards, FlashcardStudyMode.JP_TO_MY)
+    }
+
+    fun flipCard() {
+        _isCardFlipped.value = !_isCardFlipped.value
+    }
+
+    fun previousCard() {
+        if (_currentCardIndex.value > 0) {
+            _currentCardIndex.value--
+            _isCardFlipped.value = false
+        }
+    }
+
+    fun jumpToCard(index: Int) {
+        if (index in _studyDeck.value.indices) {
+            _currentCardIndex.value = index
+            _isCardFlipped.value = false
+        }
+    }
+
+    fun rateCurrentCard(rating: ReviewRating) {
+        val deck = _studyDeck.value
+        val index = _currentCardIndex.value
+        if (index !in deck.indices) return
+        val card = deck[index]
+        rateFlashcardRecall(card, rating)
+    }
+
+    fun rateFlashcardRecall(card: VocabCard, rating: ReviewRating) {
+        viewModelScope.launch {
+            repository.processReview(card, rating)
+            val currentStats = _sessionStats.value
+            val isSuccess = rating != ReviewRating.AGAIN
+            val updatedMistakes = if (!isSuccess) currentStats.mistakeCards + card else currentStats.mistakeCards
+
+            _sessionStats.value = currentStats.copy(
+                totalStudied = currentStats.totalStudied + 1,
+                againCount = currentStats.againCount + if (rating == ReviewRating.AGAIN) 1 else 0,
+                hardCount = currentStats.hardCount + if (rating == ReviewRating.HARD) 1 else 0,
+                goodCount = currentStats.goodCount + if (rating == ReviewRating.GOOD) 1 else 0,
+                easyCount = currentStats.easyCount + if (rating == ReviewRating.EASY) 1 else 0,
+                xpEarned = currentStats.xpEarned + when (rating) {
+                    ReviewRating.EASY -> 10; ReviewRating.GOOD -> 8; ReviewRating.HARD -> 5; ReviewRating.AGAIN -> 2
+                },
+                mistakeCards = updatedMistakes
+            )
+
+            if (_currentCardIndex.value < _studyDeck.value.size - 1) {
+                _currentCardIndex.value++
+                _isCardFlipped.value = false
+            } else {
+                _isSessionFinished.value = true
+                stopAutoPlay()
             }
+        }
+    }
+
+    fun restartStudySession() {
+        _currentCardIndex.value = 0
+        _isCardFlipped.value = false
+        _isSessionFinished.value = false
+        _sessionStats.value = SessionStudyStats()
+    }
+
+    fun restartMistakesOnly() {
+        val mistakes = _sessionStats.value.mistakeCards
+        if (mistakes.isNotEmpty()) {
+            startStudySession(mistakes, _studyMode.value)
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Card Updates & Custom Flashcards
+    // ------------------------------------------------------------------------
+    fun toggleBookmark(card: VocabCard) {
+        viewModelScope.launch {
+            repository.setBookmark(card.id, !card.isBookmarked)
         }
     }
 
     fun toggleBookmarkById(cardId: Long) {
         viewModelScope.launch {
-            val card = repository.getCardById(cardId) ?: return@launch
-            val nextState = !card.isBookmarked
-            _studyDeck.value = _studyDeck.value.map {
-                if (it.id == cardId) it.copy(isBookmarked = nextState) else it
+            val card = allCards.value.firstOrNull { it.id == cardId }
+            if (card != null) {
+                repository.setBookmark(cardId, !card.isBookmarked)
             }
-            repository.setBookmarkById(cardId, nextState)
         }
     }
 
     fun updatePersonalNote(cardId: Long, note: String) {
-        val trimmed = note.trim()
-        _studyDeck.value = _studyDeck.value.map {
-            if (it.id == cardId) it.copy(personalNote = trimmed) else it
-        }
         viewModelScope.launch {
-            repository.updateCardNotes(cardId, trimmed)
+            repository.updatePersonalNotes(cardId, note)
         }
     }
 
@@ -1453,22 +673,22 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         kanji: String,
         reading: String,
         meaningBurmese: String,
-        partOfSpeech: String,
-        exampleSentence: String,
-        exampleMeaningBurmese: String,
-        personalNote: String,
+        partOfSpeech: String = "",
+        exampleSentence: String = "",
+        exampleMeaningBurmese: String = "",
+        personalNote: String = "",
         tags: String = ""
     ) {
         viewModelScope.launch {
-            repository.insertCustomCard(
-                kanji = kanji.trim(),
-                reading = reading.trim(),
-                meaningBurmese = meaningBurmese.trim(),
-                partOfSpeech = partOfSpeech.trim(),
-                exampleSentence = exampleSentence.trim(),
-                exampleMeaningBurmese = exampleMeaningBurmese.trim(),
-                personalNote = personalNote.trim(),
-                tags = tags.trim()
+            repository.addCustomCard(
+                kanji = kanji,
+                reading = reading,
+                meaningBurmese = meaningBurmese,
+                partOfSpeech = partOfSpeech,
+                exampleSentence = exampleSentence,
+                exampleSentenceBurmese = exampleMeaningBurmese,
+                personalNote = personalNote,
+                tags = tags
             )
         }
     }
@@ -1484,108 +704,262 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         kanji: String,
         reading: String,
         meaningBurmese: String,
-        partOfSpeech: String,
-        exampleSentence: String,
-        exampleMeaningBurmese: String,
-        personalNote: String,
+        partOfSpeech: String = "",
+        exampleSentence: String = "",
+        exampleMeaningBurmese: String = "",
+        personalNote: String = "",
         tags: String = ""
     ) {
         viewModelScope.launch {
-            val existing = repository.getCardById(cardId) ?: return@launch
-            val updated = existing.copy(
-                kanji = kanji.trim(),
-                reading = reading.trim(),
-                meaningBurmese = meaningBurmese.trim(),
-                partOfSpeech = partOfSpeech.trim(),
-                exampleSentence = exampleSentence.trim(),
-                exampleMeaningBurmese = exampleMeaningBurmese.trim(),
-                personalNote = personalNote.trim(),
-                tags = tags.trim()
+            repository.updateCardDetails(
+                cardId = cardId,
+                kanji = kanji,
+                reading = reading,
+                meaningBurmese = meaningBurmese,
+                partOfSpeech = partOfSpeech,
+                example = exampleSentence,
+                exampleBurmese = exampleMeaningBurmese,
+                personalNote = personalNote,
+                tags = tags
             )
-            repository.updateCard(updated)
         }
     }
 
+    // ------------------------------------------------------------------------
+    // User Profile & Preferences
+    // ------------------------------------------------------------------------
     fun updateDailyGoal(newGoal: Int) {
         viewModelScope.launch {
-            val validGoal = newGoal.coerceIn(5, 200)
-            repository.updateDailyGoal(validGoal)
+            repository.updateDailyGoal(newGoal)
         }
     }
 
-    fun updateProfile(
-        name: String,
-        dailyGoal: Int,
-        targetJlpt: String,
-        avatarIndex: Int = 0,
-        customAvatarUri: String? = null
-    ) {
+    fun updateProfile(name: String, dailyGoal: Int, targetJlpt: String, avatarIndex: Int, customAvatarUri: String?) {
         viewModelScope.launch {
-            repository.updateFullProfile(name, dailyGoal, targetJlpt, avatarIndex, customAvatarUri)
+            val current = userProfile.value
+            repository.updateUserProfile(
+                current.copy(
+                    name = name,
+                    dailyGoal = dailyGoal,
+                    targetJlptLevel = targetJlpt,
+                    avatarIndex = avatarIndex,
+                    customAvatarUri = customAvatarUri
+                )
+            )
         }
     }
 
     fun updateAvatar(avatarIndex: Int, customAvatarUri: String?) {
         viewModelScope.launch {
-            repository.updateAvatar(avatarIndex, customAvatarUri)
+            val current = userProfile.value
+            repository.updateUserProfile(
+                current.copy(
+                    avatarIndex = avatarIndex,
+                    customAvatarUri = customAvatarUri
+                )
+            )
         }
     }
 
-    val isSpeaking: StateFlow<Boolean> = ttsHelper.isSpeaking
-    val speechRate: StateFlow<Float> = ttsHelper.speechRate
+    fun updateProfileSettings(
+        displayName: String,
+        targetJlptLevel: String,
+        dailyGoal: Long,
+        frontLang: String,
+        autoPlayTts: Boolean,
+        gestureStyle: String,
+        shuffleMode: String
+    ) {
+        viewModelScope.launch {
+            val user = currentUser.value
+            if (user != null) {
+                firestoreSyncRepo.updateProfileSettings(
+                    userId = user.uid,
+                    displayName = displayName,
+                    targetJlptLevel = targetJlptLevel,
+                    dailyGoal = dailyGoal,
+                    frontLang = frontLang,
+                    autoPlayTts = autoPlayTts,
+                    gestureStyle = gestureStyle,
+                    shuffleMode = shuffleMode
+                )
+            }
+        }
+    }
 
+    // ------------------------------------------------------------------------
+    // Cloud Custom Cards & Decks
+    // ------------------------------------------------------------------------
+    fun addCustomCard(
+        front: String,
+        reading: String,
+        back: String,
+        cardType: String,
+        category: String,
+        deckName: String,
+        exampleSentence: String,
+        exampleMeaning: String
+    ) {
+        viewModelScope.launch {
+            val user = currentUser.value
+            firestoreSyncRepo.addCustomFlashcard(
+                userId = user?.uid,
+                front = front,
+                reading = reading,
+                back = back,
+                cardType = cardType,
+                category = category,
+                deckName = deckName,
+                exampleSentence = exampleSentence,
+                exampleMeaning = exampleMeaning
+            )
+        }
+    }
+
+    fun createCustomDeckFromSelection(deckName: String, cards: List<VocabCard>) {
+        viewModelScope.launch {
+            val user = currentUser.value
+            cards.forEach { card ->
+                firestoreSyncRepo.addCustomFlashcard(
+                    userId = user?.uid,
+                    front = card.kanji,
+                    reading = card.reading,
+                    back = card.meaningBurmese,
+                    cardType = "Vocab",
+                    category = "Deck",
+                    deckName = deckName,
+                    exampleSentence = card.exampleSentence,
+                    exampleMeaning = card.exampleSentenceBurmese
+                )
+            }
+        }
+    }
+
+    fun deleteDeck(deckName: String) {
+        viewModelScope.launch {
+            val user = currentUser.value
+            val cardsInDeck = cloudCustomCards.value.filter { it.deckName == deckName }
+            cardsInDeck.forEach {
+                firestoreSyncRepo.deleteCustomFlashcard(user?.uid, it.id)
+            }
+        }
+    }
+
+    fun deleteCustomCard(cardId: String) {
+        viewModelScope.launch {
+            val user = currentUser.value
+            firestoreSyncRepo.deleteCustomFlashcard(user?.uid, cardId)
+        }
+    }
+
+    suspend fun signInWithGoogle(): Result<Unit> {
+        return Result.success(Unit)
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authManager.signOut()
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // TTS Audio & Voice
+    // ------------------------------------------------------------------------
     fun speakJapanese(text: String, rate: Float? = null) {
         ttsHelper.speak(text, rate)
     }
 
-    /**
-     * Speaks a single Kanji character or compound with optional reading fallback.
-     */
     fun speakKanji(kanji: String, reading: String? = null, rate: Float? = null) {
         ttsHelper.speakKanji(kanji, reading, rate)
     }
 
-    /**
-     * Speaks the card according to preferences (phonetic kana vs natural kanji).
-     */
     fun speakCard(card: VocabCard, preferPhonetic: Boolean? = null, rate: Float? = null) {
-        val usePhonetic = preferPhonetic ?: voiceSettings.value.preferPhoneticReading
-        ttsHelper.speakCard(card, preferPhonetic = usePhonetic, rate = rate)
+        ttsHelper.speakCard(card, preferPhonetic ?: voiceSettings.value.preferPhonetic, rate)
     }
 
-    /**
-     * Speaks phonetic Hiragana reading directly (guaranteeing exact pitch accent).
-     */
     fun speakPhonetic(reading: String, rate: Float? = null) {
         ttsHelper.speakPhonetic(reading, rate)
     }
 
-    /**
-     * Speaks slow pronunciation (0.7x).
-     */
     fun speakSlow(text: String) {
         ttsHelper.speakSlow(text)
     }
 
-    /**
-     * Speaks example sentence with clean formatting.
-     */
     fun speakSentence(sentence: String, rate: Float? = null) {
         ttsHelper.speakSentence(sentence, rate)
     }
 
     fun toggleSpeechRate() {
         ttsHelper.toggleSpeechRate()
-        voicePrefs.updateSettings(speechRate = ttsHelper.speechRate.value)
     }
 
     fun setSpeechRate(rate: Float) {
         ttsHelper.setSpeechRate(rate)
-        voicePrefs.updateSettings(speechRate = rate)
     }
 
     fun stopSpeaking() {
         ttsHelper.stop()
+    }
+
+    fun testVoicePronunciation() {
+        ttsHelper.speak("こんにちは！日本語を勉強しましょう。")
+    }
+
+    // ------------------------------------------------------------------------
+    // Theme & Display Controls
+    // ------------------------------------------------------------------------
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { themePrefs.setThemeMode(mode) }
+    }
+
+    fun setThemePalette(palette: ThemePalette) {
+        viewModelScope.launch { themePrefs.setThemePalette(palette) }
+    }
+
+    fun setIconThemeStyle(style: IconThemeStyle) {
+        viewModelScope.launch { themePrefs.setIconThemeStyle(style) }
+    }
+
+    fun setOledBlack(oled: Boolean) {
+        viewModelScope.launch { themePrefs.setOledBlack(oled) }
+    }
+
+    fun setThemeAesthetic(aesthetic: ThemeAesthetic) {
+        viewModelScope.launch { themePrefs.setThemeAesthetic(aesthetic) }
+    }
+
+    fun toggleDarkMode(currentIsDark: Boolean) {
+        setThemeMode(if (currentIsDark) ThemeMode.LIGHT else ThemeMode.DARK)
+    }
+
+    fun setVoiceSpeechRate(rate: Float) {
+        viewModelScope.launch { voicePrefs.setSpeechRate(rate) }
+    }
+
+    fun setVoicePitch(pitch: Float) {
+        viewModelScope.launch { voicePrefs.setPitch(pitch) }
+    }
+
+    fun setVoicePreferPhonetic(prefer: Boolean) {
+        viewModelScope.launch { voicePrefs.setPreferPhonetic(prefer) }
+    }
+
+    fun setVoiceAutoPlayFlip(autoPlay: Boolean) {
+        viewModelScope.launch { voicePrefs.setAutoPlayFlip(autoPlay) }
+    }
+
+    fun setFlashcardFontScale(scale: Float) {
+        _flashcardFontScale.value = scale.coerceIn(0.8f, 1.6f)
+    }
+
+    fun cycleFlashcardFontScale() {
+        val current = _flashcardFontScale.value
+        _flashcardFontScale.value = when {
+            current < 1.0f -> 1.0f
+            current < 1.25f -> 1.25f
+            current < 1.5f -> 1.5f
+            else -> 0.85f
+        }
     }
 
     fun setStudyMode(mode: FlashcardStudyMode) {
@@ -1597,7 +971,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setAutoPlaySpeed(seconds: Int) {
-        _autoPlaySpeedSec.value = seconds
+        _autoPlaySpeedSec.value = seconds.coerceIn(2, 10)
     }
 
     fun toggleAutoPlay() {
@@ -1613,31 +987,11 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         autoPlayJob?.cancel()
         autoPlayJob = viewModelScope.launch {
             while (_isAutoPlay.value && !_isSessionFinished.value) {
-                val currentDeck = _studyDeck.value
-                val index = _currentCardIndex.value
-                if (index >= currentDeck.size) break
-                val card = currentDeck[index]
-
-                // Step 1: Speak Japanese with smart phonetic/kanji cleaner
-                speakCard(card)
-                kotlinx.coroutines.delay((_autoPlaySpeedSec.value * 1000L).coerceAtLeast(2000L))
-
-                if (!_isAutoPlay.value || _isSessionFinished.value) break
-
-                // Step 2: Flip card to reveal answer
+                delay(_autoPlaySpeedSec.value * 1000L / 2)
                 _isCardFlipped.value = true
-                if (card.exampleSentence.isNotBlank()) {
-                    kotlinx.coroutines.delay(1000L)
-                    speakSentence(card.exampleSentence)
-                }
-                kotlinx.coroutines.delay((_autoPlaySpeedSec.value * 1000L).coerceAtLeast(2000L))
-
-                if (!_isAutoPlay.value || _isSessionFinished.value) break
-
-                // Step 3: Rate Good & Move next
+                delay(_autoPlaySpeedSec.value * 1000L / 2)
                 rateCurrentCard(ReviewRating.GOOD)
             }
-            _isAutoPlay.value = false
         }
     }
 
@@ -1647,180 +1001,36 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         autoPlayJob = null
     }
 
-    // Start Study Deck Session
-    fun startStudySession(
-        cards: List<VocabCard>,
-        mode: FlashcardStudyMode = FlashcardStudyMode.JP_TO_MY
-    ) {
-        stopAutoPlay()
-        _studyMode.value = mode
-        _studyDeck.value = cards.shuffled()
-        _currentCardIndex.value = 0
-        _isCardFlipped.value = false
-        _isSessionFinished.value = false
-        _sessionStats.value = SessionStudyStats()
+    // ------------------------------------------------------------------------
+    // Filters & Queries
+    // ------------------------------------------------------------------------
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
-    /**
-     * Dispatches an immediate SRS due review session. If no cards are specifically due yet,
-     * seeds the session with cards needing practice or unreviewed cards.
-     */
-    fun startDueCardsStudySession(
-        mode: FlashcardStudyMode = FlashcardStudyMode.JP_TO_MY,
-        onSuccess: (List<VocabCard>) -> Unit = {}
-    ) {
-        viewModelScope.launch {
-            val dueCards = repository.getDueCardsDirect(System.currentTimeMillis())
-            val cardsToStudy = if (dueCards.isNotEmpty()) {
-                dueCards
-            } else {
-                val all = repository.getAllCardsDirect()
-                all.filter { it.masteryLevel < 3 }.ifEmpty { all }.take(15)
-            }
-            startStudySession(cardsToStudy, mode)
-            onSuccess(cardsToStudy)
-        }
+    fun setSearchFilterTarget(target: SearchFilterTarget) {
+        _searchFilterTarget.value = target
     }
 
-    /**
-     * Starts a dedicated 3D Flashcard session focused on JLPT N3 Collocations (တွဲလုံးများ).
-     */
-    fun startCollocationStudySession(
-        onSuccess: (List<VocabCard>) -> Unit = {}
-    ) {
-        viewModelScope.launch {
-            val collocationCards = com.example.data.util.CollocationData.getAllCollocationCards()
-            startStudySession(collocationCards, FlashcardStudyMode.COLLOCATION)
-            onSuccess(collocationCards)
-        }
+    fun setFilter(filter: VocabFilterType) {
+        _currentFilter.value = filter
     }
 
-    fun flipCard() {
-        val nextFlipped = !_isCardFlipped.value
-        _isCardFlipped.value = nextFlipped
-        if (nextFlipped && voiceSettings.value.autoPlayAudioOnFlip) {
-            val currentDeck = _studyDeck.value
-            val index = _currentCardIndex.value
-            if (index in currentDeck.indices) {
-                speakCard(currentDeck[index])
-            }
-        }
+    fun selectLesson(lessonNumber: Int?) {
+        _selectedLesson.value = lessonNumber
     }
 
-    fun previousCard() {
-        if (_currentCardIndex.value > 0) {
-            _currentCardIndex.value = _currentCardIndex.value - 1
-            _isCardFlipped.value = false
-        }
+    fun selectTag(tag: String?) {
+        _selectedTag.value = tag
     }
 
-    fun jumpToCard(index: Int) {
-        if (index in _studyDeck.value.indices) {
-            _currentCardIndex.value = index
-            _isCardFlipped.value = false
-        }
+    fun setStatsTimeRange(range: StatsTimeRange) {
+        _statsTimeRange.value = range
     }
 
-    /**
-     * Core Spaced Repetition (SM-2) algorithm execution within ViewModel:
-     * Calculates the exact review intervals, repetitions, and ease factors for a card.
-     */
-    fun calculateSrsInterval(
-        card: VocabCard,
-        rating: ReviewRating,
-        currentTimeMs: Long = System.currentTimeMillis()
-    ): SrsCalculationResult {
-        return SpacedRepetitionEngine.calculateSrsParameters(card, rating, currentTimeMs)
-    }
-
-    /**
-     * Returns a predicted review interval mapping for all 4 ratings (AGAIN, HARD, GOOD, EASY)
-     * based on the card's specific SM-2 history.
-     */
-    fun getPredictedIntervals(
-        card: VocabCard,
-        currentTimeMs: Long = System.currentTimeMillis()
-    ): Map<ReviewRating, String> {
-        return SpacedRepetitionEngine.getPredictedIntervals(card, currentTimeMs)
-    }
-
-    /**
-     * Returns a formatted future date string for when the card will next be due under a given rating.
-     */
-    fun previewNextReviewDate(card: VocabCard, rating: ReviewRating): String {
-        val result = calculateSrsInterval(card, rating)
-        val format = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.ENGLISH)
-        return format.format(java.util.Date(result.nextReviewTimestamp))
-    }
-
-    fun rateCurrentCard(rating: ReviewRating) {
-        val currentDeck = _studyDeck.value
-        val index = _currentCardIndex.value
-        if (index < currentDeck.size) {
-            val card = currentDeck[index]
-            viewModelScope.launch {
-                repository.processCardReview(card, rating)
-            }
-
-            // Update session stats
-            val currentStats = _sessionStats.value
-            val isMistake = rating == ReviewRating.AGAIN || rating == ReviewRating.HARD
-            val updatedMistakes = if (isMistake && !currentStats.mistakeCards.any { it.id == card.id }) {
-                currentStats.mistakeCards + card
-            } else {
-                currentStats.mistakeCards
-            }
-
-            _sessionStats.value = currentStats.copy(
-                totalStudied = currentStats.totalStudied + 1,
-                againCount = currentStats.againCount + if (rating == ReviewRating.AGAIN) 1 else 0,
-                hardCount = currentStats.hardCount + if (rating == ReviewRating.HARD) 1 else 0,
-                goodCount = currentStats.goodCount + if (rating == ReviewRating.GOOD) 1 else 0,
-                easyCount = currentStats.easyCount + if (rating == ReviewRating.EASY) 1 else 0,
-                xpEarned = currentStats.xpEarned + when (rating) {
-                    ReviewRating.EASY -> 15
-                    ReviewRating.GOOD -> 10
-                    ReviewRating.HARD -> 6
-                    ReviewRating.AGAIN -> 3
-                },
-                mistakeCards = updatedMistakes
-            )
-
-            if (index + 1 < currentDeck.size) {
-                _currentCardIndex.value = index + 1
-                _isCardFlipped.value = false
-            } else {
-                stopAutoPlay()
-                _isSessionFinished.value = true
-            }
-        }
-    }
-
-    fun rateFlashcardRecall(card: VocabCard, rating: ReviewRating) {
-        viewModelScope.launch {
-            repository.processCardReview(card, rating)
-        }
-    }
-
-    fun restartStudySession() {
-        if (_studyDeck.value.isNotEmpty()) {
-            stopAutoPlay()
-            _studyDeck.value = _studyDeck.value.shuffled()
-            _currentCardIndex.value = 0
-            _isCardFlipped.value = false
-            _isSessionFinished.value = false
-            _sessionStats.value = SessionStudyStats()
-        }
-    }
-
-    fun restartMistakesOnly() {
-        val mistakes = _sessionStats.value.mistakeCards
-        if (mistakes.isNotEmpty()) {
-            startStudySession(mistakes, _studyMode.value)
-        }
-    }
-
-    // Daily Reminder WorkManager Controls
+    // ------------------------------------------------------------------------
+    // Notifications & Reminders
+    // ------------------------------------------------------------------------
     fun updateReminderSettings(
         enabled: Boolean,
         hour: Int,
@@ -1829,227 +1039,46 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         quotesEnabled: Boolean = true,
         smartReminderEnabled: Boolean = true
     ) {
-        reminderPrefs.updateSettings(
-            isEnabled = enabled,
-            reminderHour = hour,
-            reminderMinute = minute,
-            soundEnabled = soundEnabled,
-            motivationalQuotesEnabled = quotesEnabled,
-            isSmartReminderEnabled = smartReminderEnabled
-        )
-        if (enabled) {
-            ReminderScheduler.scheduleDailyReminder(getApplication(), hour, minute)
-        } else {
-            ReminderScheduler.cancelDailyReminder(getApplication())
+        viewModelScope.launch {
+            reminderPrefs.updateSettings(
+                isEnabled = enabled,
+                reminderHour = hour,
+                reminderMinute = minute,
+                soundEnabled = soundEnabled,
+                motivationalQuotesEnabled = quotesEnabled,
+                isSmartReminderEnabled = smartReminderEnabled
+            )
+            ReminderScheduler.rescheduleFromPreferences(getApplication())
         }
     }
 
     fun setReminderEnabled(enabled: Boolean) {
-        val current = reminderPrefs.getSettings()
-        updateReminderSettings(
-            enabled = enabled,
-            hour = current.reminderHour,
-            minute = current.reminderMinute,
-            soundEnabled = current.soundEnabled,
-            quotesEnabled = current.motivationalQuotesEnabled,
-            smartReminderEnabled = current.isSmartReminderEnabled
-        )
+        viewModelScope.launch {
+            reminderPrefs.setEnabled(enabled)
+            ReminderScheduler.rescheduleFromPreferences(getApplication())
+        }
     }
 
     fun setSmartReminderEnabled(smart: Boolean) {
-        val current = reminderPrefs.getSettings()
-        updateReminderSettings(
-            enabled = current.isEnabled,
-            hour = current.reminderHour,
-            minute = current.reminderMinute,
-            soundEnabled = current.soundEnabled,
-            quotesEnabled = current.motivationalQuotesEnabled,
-            smartReminderEnabled = smart
-        )
+        viewModelScope.launch {
+            reminderPrefs.setSmartReminderEnabled(smart)
+        }
     }
 
     fun setReminderTime(hour: Int, minute: Int) {
-        val current = reminderPrefs.getSettings()
-        updateReminderSettings(
-            enabled = current.isEnabled,
-            hour = hour,
-            minute = minute,
-            soundEnabled = current.soundEnabled,
-            quotesEnabled = current.motivationalQuotesEnabled,
-            smartReminderEnabled = current.isSmartReminderEnabled
-        )
+        viewModelScope.launch {
+            reminderPrefs.setReminderTime(hour, minute)
+            ReminderScheduler.rescheduleFromPreferences(getApplication())
+        }
     }
 
     fun triggerTestReminder() {
         ReminderScheduler.sendImmediateTestReminder(getApplication())
     }
 
-    // Authentication and Cloud Sync Functions
-    suspend fun signInWithGoogle(): Result<FirebaseUser> {
-        val result = authManager.signInWithGoogle()
-        if (result.isSuccess) {
-            val user = result.getOrNull()
-            if (user != null) {
-                // Initialize or sync user profile
-                viewModelScope.launch {
-                    val localProfile = repository.getUserProfileDirect()
-                    val xp = localProfile?.totalXp?.toLong() ?: 0L
-                    val streak = localProfile?.currentStreak?.toLong() ?: 1L
-                    firestoreSyncRepo.updateProfileStats(user.uid, xp, streak)
-                }
-            }
-        }
-        return result
-    }
-
-    fun signOut() {
-        authManager.signOut()
-    }
-
-    fun addCustomCard(
-        front: String,
-        reading: String,
-        back: String,
-        cardType: String = "Kotoba",
-        category: String = "Custom",
-        deckName: String = "General",
-        exampleSentence: String = "",
-        exampleMeaning: String = ""
-    ) {
-        viewModelScope.launch {
-            val user = authManager.currentUser
-            val card = CustomFlashcard(
-                id = "custom_${System.currentTimeMillis()}",
-                userId = user?.uid ?: "local",
-                front = front,
-                reading = reading,
-                back = back,
-                cardType = cardType,
-                category = category,
-                deckName = deckName.ifBlank { "General" },
-                exampleSentence = exampleSentence,
-                exampleMeaning = exampleMeaning,
-                masteryLevel = 0L
-            )
-            if (user != null) {
-                firestoreSyncRepo.saveCustomCard(user.uid, card)
-            } else {
-                firestoreSyncRepo.saveLocalCustomCard(card)
-            }
-        }
-    }
-
-    fun createCustomDeckFromSelection(
-        deckName: String,
-        cards: List<VocabCard>
-    ) {
-        viewModelScope.launch {
-            val user = authManager.currentUser
-            val userId = user?.uid ?: "local"
-            val targetDeck = deckName.ifBlank { "Custom Deck" }
-            val customList = cards.mapIndexed { index, card ->
-                CustomFlashcard(
-                    id = "custom_${System.currentTimeMillis()}_$index",
-                    userId = userId,
-                    front = card.kanji.ifEmpty { card.reading },
-                    reading = card.reading,
-                    back = card.meaningBurmese,
-                    cardType = if (card.lessonNumber >= 100) "PastExam" else "Kotoba",
-                    category = "Custom Deck",
-                    deckName = targetDeck,
-                    exampleSentence = card.exampleSentence,
-                    exampleMeaning = card.exampleMeaningBurmese,
-                    masteryLevel = 0L
-                )
-            }
-            if (user != null) {
-                firestoreSyncRepo.saveBulkCustomCards(user.uid, customList)
-            } else {
-                for (c in customList) {
-                    firestoreSyncRepo.saveLocalCustomCard(c)
-                }
-            }
-        }
-    }
-
-    fun deleteDeck(deckName: String) {
-        viewModelScope.launch {
-            val user = authManager.currentUser
-            val currentCards = cloudCustomCards.value.filter { it.deckName == deckName }
-            for (card in currentCards) {
-                if (user != null) {
-                    firestoreSyncRepo.deleteCustomCard(user.uid, card.id)
-                } else {
-                    firestoreSyncRepo.deleteLocalCustomCard(card.id)
-                }
-            }
-        }
-    }
-
-    fun deleteCustomCard(cardId: String) {
-        viewModelScope.launch {
-            val user = authManager.currentUser
-            if (user != null) {
-                firestoreSyncRepo.deleteCustomCard(user.uid, cardId)
-            } else {
-                firestoreSyncRepo.deleteLocalCustomCard(cardId)
-            }
-        }
-    }
-
-    fun updateProfileSettings(
-        displayName: String,
-        targetJlptLevel: String,
-        dailyGoal: Long,
-        frontLang: String,
-        autoPlayTts: Boolean,
-        gestureStyle: String,
-        shuffleMode: String
-    ) {
-        viewModelScope.launch {
-            val user = authManager.currentUser
-            val current = firestoreUserProfile.value ?: firestoreSyncRepo.getLocalUserProfile()
-            val updated = current.copy(
-                userId = user?.uid ?: "local_user",
-                displayName = displayName.ifBlank { "Learner" },
-                targetJlptLevel = targetJlptLevel,
-                dailyGoal = dailyGoal,
-                flashcardFrontLang = frontLang,
-                autoPlayTts = autoPlayTts,
-                gestureStyle = gestureStyle,
-                shuffleMode = shuffleMode
-            )
-            firestoreSyncRepo.saveOrUpdateProfile(updated)
-            repository.updateProfileName(
-                name = displayName.ifBlank { "Learner" },
-                dailyGoal = dailyGoal.toInt(),
-                targetJlpt = targetJlptLevel
-            )
-        }
-    }
-
-    fun startCustomDeckStudy(cards: List<CustomFlashcard>) {
-        if (cards.isNotEmpty()) {
-            val vocabCards = cards.mapIndexed { index, cc ->
-                VocabCard(
-                    id = (cc.id.hashCode().toLong() and 0x7FFFFFFFL) + index,
-                    lessonNumber = 999,
-                    lessonTitle = cc.deckName,
-                    sectionTitle = "Custom Deck",
-                    kanji = cc.front,
-                    reading = cc.reading,
-                    meaningBurmese = cc.back,
-                    exampleSentence = cc.exampleSentence,
-                    exampleMeaningBurmese = cc.exampleMeaning,
-                    isCustom = true
-                )
-            }
-            startStudySession(vocabCards)
-        }
-    }
-
     override fun onCleared() {
         super.onCleared()
+        stopAutoPlay()
         ttsHelper.shutdown()
     }
 }

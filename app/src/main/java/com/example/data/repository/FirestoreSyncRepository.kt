@@ -38,7 +38,8 @@ class FirestoreSyncRepository(
         fun create(context: Context): FirestoreSyncRepository {
             val dbInstance = try {
                 val databaseId = try {
-                    context.getString(R.string.firestore_database_id)
+                    val resId = context.resources.getIdentifier("firestore_database_id", "string", context.packageName)
+                    if (resId != 0) context.getString(resId) else null
                 } catch (e: Exception) {
                     null
                 }
@@ -244,12 +245,41 @@ class FirestoreSyncRepository(
         return Result.success(Unit)
     }
 
-    suspend fun deleteCustomFlashcard(userId: String, cardId: String): Result<Unit> {
+    suspend fun addCustomFlashcard(
+        userId: String?,
+        front: String,
+        reading: String,
+        back: String,
+        cardType: String,
+        category: String,
+        deckName: String,
+        exampleSentence: String = "",
+        exampleMeaning: String = ""
+    ): Result<Unit> {
+        val effectiveUid = userId ?: "local"
+        val card = CustomFlashcard(
+            id = "custom_${System.currentTimeMillis()}_${(100..999).random()}",
+            userId = effectiveUid,
+            front = front,
+            reading = reading,
+            back = back,
+            cardType = cardType,
+            category = category,
+            deckName = deckName,
+            exampleSentence = exampleSentence,
+            exampleMeaning = exampleMeaning,
+            createdAt = com.google.firebase.Timestamp.now()
+        )
+        return saveCustomFlashcard(card)
+    }
+
+    suspend fun deleteCustomFlashcard(userId: String?, cardId: String): Result<Unit> {
         deleteLocalCustomCard(cardId)
         val currentDb = db
-        if (currentDb != null && userId.isNotEmpty() && userId != "local" && userId != "local_user") {
+        val actualUid = userId ?: ""
+        if (currentDb != null && actualUid.isNotEmpty() && actualUid != "local" && actualUid != "local_user") {
             try {
-                currentDb.collection("users").document(userId).collection("custom_flashcards").document(cardId).delete().await()
+                currentDb.collection("users").document(actualUid).collection("custom_flashcards").document(cardId).delete().await()
             } catch (e: Exception) {
                 Log.w(TAG, "Cloud delete failed: ${e.message}")
             }
@@ -257,7 +287,7 @@ class FirestoreSyncRepository(
         return Result.success(Unit)
     }
 
-    suspend fun deleteCustomCard(userId: String, cardId: String): Result<Unit> {
+    suspend fun deleteCustomCard(userId: String?, cardId: String): Result<Unit> {
         return deleteCustomFlashcard(userId, cardId)
     }
 
@@ -349,6 +379,30 @@ class FirestoreSyncRepository(
         val current = getLocalUserProfile()
         val updated = current.copy(
             userId = if (userId.isNotEmpty()) userId else current.userId,
+            flashcardFrontLang = frontLang,
+            autoPlayTts = autoPlayTts,
+            gestureStyle = gestureStyle,
+            shuffleMode = shuffleMode
+        )
+        return saveOrUpdateProfile(updated)
+    }
+
+    suspend fun updateProfileSettings(
+        userId: String,
+        displayName: String,
+        targetJlptLevel: String,
+        dailyGoal: Long,
+        frontLang: String,
+        autoPlayTts: Boolean,
+        gestureStyle: String,
+        shuffleMode: String
+    ): Result<Unit> {
+        val current = getLocalUserProfile()
+        val updated = current.copy(
+            userId = if (userId.isNotEmpty()) userId else current.userId,
+            displayName = displayName,
+            targetJlptLevel = targetJlptLevel,
+            dailyGoal = dailyGoal,
             flashcardFrontLang = frontLang,
             autoPlayTts = autoPlayTts,
             gestureStyle = gestureStyle,

@@ -14,112 +14,85 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CustomFlashcard
-import com.example.data.seed.SeedData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlashcardScreen(
     customCards: List<CustomFlashcard>,
     onBackClick: () -> Unit,
-    onReviewCompleted: (xp: Long) -> Unit
+    onReviewCompleted: (xp: Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val kotobaList = remember { SeedData.kotobaList }
-
-    val totalCount = if (selectedTab == 0) kotobaList.size else customCards.size
-    var currentIndex by remember(selectedTab) { mutableIntStateOf(0) }
-    var isFlipped by remember(selectedTab, currentIndex) { mutableStateOf(false) }
+    var currentIndex by remember { mutableIntStateOf(0) }
+    var isFlipped by remember { mutableStateOf(false) }
 
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
         animationSpec = tween(durationMillis = 400),
-        label = "cardFlip"
+        label = "card_flip"
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Flashcard Study", fontWeight = FontWeight.Bold) },
+                title = { Text("Custom Cards Flashcard") },
                 navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.testTag("flashcard_back_btn")
-                    ) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
-        }
+        },
+        modifier = modifier
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                modifier = Modifier.fillMaxWidth()
+        if (customCards.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
             ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("JLPT N3 (${kotobaList.size})") }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Custom Cards (${customCards.size})") }
+                Text(
+                    text = "No custom cards available for study.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (totalCount == 0) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "ကိုယ်ပိုင် Flashcard မရှိသေးပါ။ Custom Cards menu တွင် ကတ်အသစ်ထည့်သွင်းနိုင်ပါသည်။",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
+        } else {
+            val card = customCards.getOrNull(currentIndex) ?: customCards.first()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = "${currentIndex + 1} / $totalCount",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "Card ${currentIndex + 1} of ${customCards.size}",
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
+                // 3D Flip Card Container
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .padding(vertical = 24.dp)
                         .graphicsLayer {
                             rotationY = rotation
                             cameraDistance = 12f * density
                         }
-                        .clickable { isFlipped = !isFlipped }
-                        .testTag("interactive_flashcard"),
+                        .clickable { isFlipped = !isFlipped },
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isFlipped) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Box(
                         modifier = Modifier
@@ -128,123 +101,64 @@ fun FlashcardScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         if (rotation <= 90f) {
+                            // Front Face
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                val frontText = if (selectedTab == 0) {
-                                    kotobaList[currentIndex].word
-                                } else {
-                                    customCards[currentIndex].front
+                                if (card.reading.isNotBlank()) {
+                                    Text(
+                                        text = card.reading,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
                                 Text(
-                                    text = frontText,
-                                    fontSize = 44.sp,
+                                    text = card.front,
+                                    fontSize = 36.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.background(
-                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                        RoundedCornerShape(12.dp)
-                                    ).padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.RotateRight,
-                                        contentDescription = "Flip",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "အဓိပ္ပာယ်ကြည့်ရန် နှိပ်ပါ (Tap to flip)",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                Text(
+                                    text = "Tap to flip",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
                             }
                         } else {
+                            // Back Face (Mirrored)
                             Column(
                                 modifier = Modifier.graphicsLayer { rotationY = 180f },
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                if (selectedTab == 0) {
-                                    val item = kotobaList[currentIndex]
+                                Text(
+                                    text = card.back,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center
+                                )
+                                if (card.exampleSentence.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                        text = item.reading,
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = item.romaji,
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                                    )
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    Text(
-                                        text = item.meaningBurmese,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        text = card.exampleSentence,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center
                                     )
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Text(
-                                                text = item.exampleJapanese,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = item.exampleBurmese,
-                                                fontSize = 13.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    val item = customCards[currentIndex]
-                                    if (item.reading.isNotEmpty()) {
+                                    if (card.exampleMeaning.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = item.reading,
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary
+                                            text = card.exampleMeaning,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            textAlign = TextAlign.Center
                                         )
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                    }
-                                    Text(
-                                        text = item.back,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    if (item.exampleSentence.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(14.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                                        ) {
-                                            Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(text = item.exampleSentence, fontSize = 14.sp)
-                                                if (item.exampleMeaning.isNotEmpty()) {
-                                                    Spacer(modifier = Modifier.height(4.dp))
-                                                    Text(text = item.exampleMeaning, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                }
-                                            }
-                                        }
                                     }
                                 }
                             }
@@ -252,51 +166,40 @@ fun FlashcardScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = "မှတ်မိနိုင်စွမ်းကို ရွေးပါ (Spaced Repetition Rating)",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
+                // Bottom Navigation Controls
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
+                    Button(
                         onClick = {
-                            onReviewCompleted(1L)
-                            if (currentIndex < totalCount - 1) currentIndex++ else currentIndex = 0
-                            isFlipped = false
+                            if (currentIndex > 0) {
+                                currentIndex--
+                                isFlipped = false
+                            }
                         },
-                        modifier = Modifier.weight(1f).testTag("srs_hard_btn"),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        enabled = currentIndex > 0
                     ) {
-                        Text("ခက်ခဲ (+1 XP)", fontSize = 11.sp, maxLines = 1)
+                        Text("Previous")
                     }
 
-                    FilledTonalButton(
-                        onClick = {
-                            onReviewCompleted(3L)
-                            if (currentIndex < totalCount - 1) currentIndex++ else currentIndex = 0
-                            isFlipped = false
-                        },
-                        modifier = Modifier.weight(1f).testTag("srs_good_btn")
-                    ) {
-                        Text("သင့်တော် (+3 XP)", fontSize = 11.sp, maxLines = 1)
+                    IconButton(onClick = { isFlipped = !isFlipped }) {
+                        Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = "Flip")
                     }
 
                     Button(
                         onClick = {
-                            onReviewCompleted(5L)
-                            if (currentIndex < totalCount - 1) currentIndex++ else currentIndex = 0
-                            isFlipped = false
-                        },
-                        modifier = Modifier.weight(1f).testTag("srs_easy_btn")
+                            if (currentIndex < customCards.size - 1) {
+                                currentIndex++
+                                isFlipped = false
+                            } else {
+                                onReviewCompleted(customCards.size * 5)
+                                onBackClick()
+                            }
+                        }
                     ) {
-                        Text("လွယ်ကူ (+5 XP)", fontSize = 11.sp, maxLines = 1)
+                        Text(if (currentIndex < customCards.size - 1) "Next" else "Finish")
                     }
                 }
             }

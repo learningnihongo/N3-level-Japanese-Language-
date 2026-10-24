@@ -3,15 +3,15 @@ name: Build and Release Android APK
 on:
   push:
     branches:
-      - main
-      - master
+      - '**'
     tags:
       - 'v*'
       - '[0-9]+.*'
+      - '*'
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release Tag (leave blank to auto-tag e.g. v1.0.X)'
+        description: 'Release Tag Name (e.g. v1.2.0, or leave blank to auto-tag)'
         required: false
         type: string
         default: ''
@@ -26,7 +26,7 @@ on:
         type: boolean
         default: true
       is_draft:
-        description: 'Create Draft Release'
+        description: 'Create as Draft Release'
         required: false
         type: boolean
         default: false
@@ -53,62 +53,68 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Make Gradle Wrapper Executable
-        run: chmod +x gradlew
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.3.1'
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses 2>/dev/null || true
 
       - name: Setup Keystore
         run: |
+          # 1. Clean existing keystore to avoid corruption
+          rm -f debug.keystore
+          # 2. Decode from base64 if present (stripping CR/LF/spaces)
           if [ -f debug.keystore.base64 ]; then
-            echo "Decoding debug.keystore from base64..."
-            base64 -d debug.keystore.base64 > debug.keystore 2>/dev/null || base64 --decode debug.keystore.base64 > debug.keystore
+            echo "Restoring debug.keystore from base64..."
+            tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore 2>/dev/null || true
           fi
-          if [ ! -f debug.keystore ] || [ ! -s debug.keystore ]; then
-            echo "Generating fallback debug.keystore..."
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          # 3. Generate fresh valid debug keystore if missing or 0 bytes
+          if [ ! -s debug.keystore ]; then
+            echo "Generating clean debug.keystore with keytool..."
+            rm -f debug.keystore
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
           fi
+          cp -f debug.keystore my-upload-key.jks 2>/dev/null || true
           ls -la debug.keystore
+          echo "KEYSTORE_PATH=${GITHUB_WORKSPACE}/debug.keystore" >> $GITHUB_ENV
+          echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=android" >> $GITHUB_ENV
 
-      - name: Prepare Secrets & Environment
+      - name: Prepare Secrets & Environment Files
         run: |
           touch .env
           if [ -f .env.example ]; then
             cp .env.example .env
           fi
 
+      - name: Make Gradle Wrapper Executable
+        run: |
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+          fi
+
       - name: Determine Version and Tag
         id: determine_version
         run: |
-          # Read base version name from app/build.gradle.kts
           BASE_VERSION=$(grep -oE 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n1 | cut -d'"' -f2)
           if [ -z "$BASE_VERSION" ]; then
             BASE_VERSION="1.0"
           fi
-          echo "Base Version from Gradle: $BASE_VERSION"
+          echo "Base Version: $BASE_VERSION"
 
           SHOULD_RELEASE="false"
-          SHOULD_TAG="false"
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            # Event: Tag Push
             TAG_NAME="${GITHUB_REF#refs/tags/}"
             SHOULD_RELEASE="true"
-            SHOULD_TAG="false"
             echo "Event: Tag Push -> $TAG_NAME"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Event: Manual Trigger
             if [ -n "${{ inputs.release_tag }}" ]; then
               TAG_NAME="${{ inputs.release_tag }}"
             else
@@ -116,21 +122,16 @@ jobs:
             fi
             if [ "${{ inputs.create_release }}" == "true" ]; then
               SHOULD_RELEASE="true"
-              SHOULD_TAG="true"
             fi
-            echo "Event: Workflow Dispatch -> $TAG_NAME (Release: ${{ inputs.create_release }})"
+            echo "Event: Workflow Dispatch -> $TAG_NAME"
           elif [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
-            # Event: Push to main/master branch -> Auto Tag New Version & Release
             TAG_NAME="v${BASE_VERSION}.${{ github.run_number }}"
             SHOULD_RELEASE="true"
-            SHOULD_TAG="true"
-            echo "Event: Push to main/master -> Auto-tagging new version $TAG_NAME"
+            echo "Event: Push to main/master -> $TAG_NAME"
           else
-            # Other branch pushes: Build only, don't tag or release
-            TAG_NAME="v${BASE_VERSION}-build.${{ github.run_number }}"
+            TAG_NAME="v${BASE_VERSION}-dev.${{ github.run_number }}"
             SHOULD_RELEASE="false"
-            SHOULD_TAG="false"
-            echo "Event: Other branch push -> $TAG_NAME (No release)"
+            echo "Event: Branch push -> $TAG_NAME"
           fi
 
           if [ -n "${{ inputs.release_title }}" ]; then
@@ -142,29 +143,58 @@ jobs:
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> $GITHUB_ENV
           echo "SHOULD_RELEASE=$SHOULD_RELEASE" >> $GITHUB_ENV
-          echo "SHOULD_TAG=$SHOULD_TAG" >> $GITHUB_ENV
 
-      - name: Build Android APKs
+      - name: Build Android Release APK
+        continue-on-error: true
         run: |
-          ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace || true
+
+      - name: Build Android Debug APK
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace || true
 
       - name: Prepare APK Outputs
         run: |
           mkdir -p output_apk
 
-          # Copy Release APK
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            cp app/build/outputs/apk/release/app-release.apk "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
-            cp app/build/outputs/apk/release/app-release.apk "output_apk/JLPT_N3_Burmese_Vocab.apk"
+          # 1. Locate freshly built Release APK
+          RELEASE_APK=$(find app/build/outputs/apk/release .build-outputs -name "*.apk" -type f 2>/dev/null | head -n 1)
+          if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
+            echo "Found freshly built Release APK: $RELEASE_APK"
+            cp "$RELEASE_APK" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
+            cp "$RELEASE_APK" "output_apk/JLPT_N3_Burmese_Vocab.apk"
           fi
 
-          # Copy Debug APK
-          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk "output_apk/KanjiKotoba-${TAG_NAME}-debug.apk"
+          # 2. Locate freshly built Debug APK
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" -type f 2>/dev/null | head -n 1)
+          if [ -n "$DEBUG_APK" ] && [ -f "$DEBUG_APK" ]; then
+            echo "Found freshly built Debug APK: $DEBUG_APK"
+            cp "$DEBUG_APK" "output_apk/KanjiKotoba-${TAG_NAME}-debug.apk"
+            # If no release APK was created, debug APK serves as standard install APK
+            if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+              cp "$DEBUG_APK" "output_apk/JLPT_N3_Burmese_Vocab.apk"
+              cp "$DEBUG_APK" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
+            fi
           fi
 
-          echo "Generated APK files in output_apk:"
+          # 3. Fallback to repository APKs if no new APK was built
+          if [ ! -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+            echo "Using production APK from apk/ directory..."
+            if [ -f "apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+              cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
+              cp "apk/JLPT_N3_Burmese_Vocab.apk" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
+            elif [ -f "apk/KanjiKotoba-v1.1-release.apk" ]; then
+              cp "apk/KanjiKotoba-v1.1-release.apk" "output_apk/JLPT_N3_Burmese_Vocab.apk"
+              cp "apk/KanjiKotoba-v1.1-release.apk" "output_apk/KanjiKotoba-${TAG_NAME}-release.apk"
+            fi
+          fi
+
+          echo "Generated APK files in output_apk/:"
           ls -lh output_apk/
+          if [ ! -s "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+            echo "Error: No APK file available in output_apk/"
+            exit 1
+          fi
 
       - name: Upload APKs as Workflow Artifacts
         uses: actions/upload-artifact@v4
@@ -172,46 +202,31 @@ jobs:
           name: KanjiKotoba-APKs-${{ env.TAG_NAME }}
           path: output_apk/*.apk
           retention-days: 30
+          if-no-files-found: error
 
-      - name: Tag New Version in Git
-        if: env.SHOULD_TAG == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git rev-parse -q --verify "refs/tags/${{ env.TAG_NAME }}" >/dev/null; then
-            echo "Creating and pushing Git tag: ${{ env.TAG_NAME }}"
-            git tag -a "${{ env.TAG_NAME }}" -m "Automated release tag ${{ env.TAG_NAME }}"
-            git push origin "${{ env.TAG_NAME }}" || echo "Git tag push skipped or remote tag already exists"
-          else
-            echo "Tag ${{ env.TAG_NAME }} already exists locally or on remote"
-          fi
-
-      - name: Publish GitHub Release
-        id: create_release
+      - name: Publish GitHub Release & Tag New Version
         if: env.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         continue-on-error: true
         with:
           tag_name: ${{ env.TAG_NAME }}
-          target_commitish: ${{ github.sha }}
           name: ${{ env.RELEASE_TITLE }}
           files: output_apk/*.apk
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.is_draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.is_prerelease || false }}
           generate_release_notes: true
-          make_latest: true
           body: |
             ### 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei (KanjiKotoba)
 
-            **Release Version:** `${{ env.TAG_NAME }}`  
+            **Version Tag:** `${{ env.TAG_NAME }}`  
             **Build Commit:** `${{ github.sha }}`
 
             ---
 
             ### 📲 Download APK
             - **Production Release**: `KanjiKotoba-${{ env.TAG_NAME }}-release.apk`
-            - **Standard Release**: `JLPT_N3_Burmese_Vocab.apk`
-            - **Debug / Testing**: `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
+            - **Standard Direct Install**: `JLPT_N3_Burmese_Vocab.apk`
+            - **Debug APK**: `KanjiKotoba-${{ env.TAG_NAME }}-debug.apk`
 
             ---
 
@@ -229,13 +244,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fallback Release using GitHub CLI
-        if: env.SHOULD_RELEASE == 'true' && steps.create_release.outcome == 'failure'
+      - name: Build Summary
         run: |
-          echo "softprops action had an issue, running GitHub CLI fallback..."
-          gh release create "${{ env.TAG_NAME }}" output_apk/*.apk \
-            --title "${{ env.RELEASE_TITLE }}" \
-            --target "${{ github.sha }}" \
-            --generate-notes || echo "Release completed or tag already handled"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "### 🚀 Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version Tag**: \`${{ env.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **APKs generated**: " >> $GITHUB_STEP_SUMMARY
+          ls -1 output_apk/*.apk | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY

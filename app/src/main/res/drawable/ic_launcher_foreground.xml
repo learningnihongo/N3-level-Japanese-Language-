@@ -4,46 +4,45 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!-- Flashcard shadow -->
-    <path
-        android:fillColor="#33000000"
-        android:pathData="M32,29 h48 a6,6 0 0 1 6,6 v48 a6,6 0 0 1 -6,6 h-48 a6,6 0 0 1 -6,-6 v-48 a6,6 0 0 1 6,-6 z" />
+    <group
+        android:scaleX="0.65"
+        android:scaleY="0.65"
+        android:translateX="18.9"
+        android:translateY="18.9">
+        <!-- Circular Soft Backdrop Badge -->
+        <path
+            android:fillColor="#33FF8A80"
+            android:pathData="M54,54m-40,0a40,40 0,1,1 80,0a40,40 0,1,1 -80,0" />
 
-    <!-- Flashcard Body White/Cream -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M30,27 h48 a6,6 0 0 1 6,6 v48 a6,6 0 0 1 -6,6 h-48 a6,6 0 0 1 -6,-6 v-48 a6,6 0 0 1 6,-6 z" />
+        <!-- Japanese Kanji / Torii Gate / Book Stylized Symbol -->
+        <!-- Torii Top Bar -->
+        <path
+            android:fillColor="#FF5252"
+            android:pathData="M22,32 Q54,28 86,32 L84,38 Q54,34 24,38 Z" />
 
-    <!-- Card Accent Top Bar (Crimson) -->
-    <path
-        android:fillColor="#E53935"
-        android:pathData="M30,27 h48 a6,6 0 0 1 6,6 v6 h-60 v-6 a6,6 0 0 1 6,-6 z" />
+        <!-- Torii Sub Bar -->
+        <path
+            android:fillColor="#FF8A80"
+            android:pathData="M28,42 L80,42 L80,46 L28,46 Z" />
 
-    <!-- Stylized Kanji '言 / 語' & Kotoba icon marks -->
-    <!-- Top dot/dash -->
-    <path
-        android:fillColor="#1A1C29"
-        android:pathData="M51,44 h6 v3 h-6 z" />
-    <!-- Horizontal stroke 1 -->
-    <path
-        android:fillColor="#1A1C29"
-        android:pathData="M43,49 h22 v3 h-22 z" />
-    <!-- Horizontal stroke 2 -->
-    <path
-        android:fillColor="#1A1C29"
-        android:pathData="M46,54 h16 v2.5 h-16 z" />
-    <!-- Horizontal stroke 3 -->
-    <path
-        android:fillColor="#1A1C29"
-        android:pathData="M46,58.5 h16 v2.5 h-16 z" />
-    <!-- Bottom mouth radical (口) -->
-    <path
-        android:fillColor="#1A1C29"
-        android:pathData="M45,63 h18 v11 h-18 z M48,65.5 v6 h12 v-6 z" />
+        <!-- Left Pillar -->
+        <path
+            android:fillColor="#FF5252"
+            android:pathData="M36,36 L42,36 L39,80 L33,80 Z" />
 
-    <!-- Spaced Repetition Star / Sparkle badge at top right corner -->
-    <path
-        android:fillColor="#FFD54F"
-        android:pathData="M73,30 L74.5,34.5 L79,35 L75.5,38 L76.5,42.5 L73,40 L69.5,42.5 L70.5,38 L67,35 L71.5,34.5 Z" />
+        <!-- Right Pillar -->
+        <path
+            android:fillColor="#FF5252"
+            android:pathData="M66,36 L72,36 L75,80 L69,80 Z" />
+
+        <!-- Center Kanji Character '語' / Book Accent in Golden White -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M51,48 L57,48 L57,52 L51,52 Z M47,56 L61,56 L61,60 L47,60 Z M49,63 L59,63 L59,66 L49,66 Z M48,69 L60,69 L60,78 L48,78 Z M51,72 L57,72 L57,75 L51,75 Z" />
+
+        <!-- Rising Sun Golden Glow in Background of Gate -->
+        <path
+            android:fillColor="#FFA726"
+            android:pathData="M54,50m-14,0a14,14 0,1,1 28,0a14,14 0,1,1 -28,0" />
+    </group>
 </vector>

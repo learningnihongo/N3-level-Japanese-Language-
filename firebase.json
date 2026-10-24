@@ -1,8 +1,0 @@
-{
-  "firestore": [
-    {
-      "database": "ai-studio-android-kanjikot-5e133564-496e-4769-a416-a5dfa2bc3848",
-      "rules": "firestore.rules"
-    }
-  ]
-}

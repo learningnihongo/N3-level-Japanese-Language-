@@ -12,7 +12,10 @@ data class VoiceSettings(
     val preferPhoneticReading: Boolean = false,
     val autoPlayAudioOnFlip: Boolean = false,
     val slowSpeechRate: Float = 0.7f
-)
+) {
+    val preferPhonetic: Boolean
+        get() = preferPhoneticReading
+}
 
 class VoiceSettingsPreferences(context: Context) {
     private val prefs: SharedPreferences =
@@ -21,7 +24,13 @@ class VoiceSettingsPreferences(context: Context) {
     private val _settingsFlow = MutableStateFlow(loadSettings())
     val settingsFlow: StateFlow<VoiceSettings> = _settingsFlow.asStateFlow()
 
-    fun getSettings(): VoiceSettings = loadSettings()
+    val settings: VoiceSettings
+        get() = loadSettings()
+
+    fun setSpeechRate(rate: Float) = updateSettings(speechRate = rate)
+    fun setPitch(pitch: Float) = updateSettings(pitch = pitch)
+    fun setPreferPhonetic(prefer: Boolean) = updateSettings(preferPhoneticReading = prefer)
+    fun setAutoPlayFlip(autoPlay: Boolean) = updateSettings(autoPlayAudioOnFlip = autoPlay)
 
     fun updateSettings(
         speechRate: Float = _settingsFlow.value.speechRate,

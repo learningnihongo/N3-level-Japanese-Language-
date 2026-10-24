@@ -33,7 +33,13 @@ class ReminderPreferences(context: Context) {
     private val _settingsFlow = MutableStateFlow(loadSettings())
     val settingsFlow: StateFlow<ReminderSettings> = _settingsFlow.asStateFlow()
 
+    @get:JvmName("getSettingsProperty")
+    val settings: ReminderSettings
+        get() = loadSettings()
+
     fun getSettings(): ReminderSettings = loadSettings()
+
+    fun setReminderTime(hour: Int, minute: Int) = setTime(hour, minute)
 
     fun updateSettings(
         isEnabled: Boolean,
