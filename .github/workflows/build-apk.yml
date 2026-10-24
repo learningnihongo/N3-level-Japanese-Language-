@@ -134,27 +134,23 @@ jobs:
           git tag -a "$TAG" -m "Release $TAG" 2>/dev/null || true
           git push origin "$TAG" 2>/dev/null || echo "Tag push skipped"
 
-          # Publish release via GitHub CLI
+          # Publish release via GitHub CLI with --target
           cat << 'EOF' > release_notes.md
-## 🇯🇵 JLPT N3 Burmese Vocab & Kanji Sensei
+          ## JLPT N3 Burmese Vocab & Kanji Sensei
 
-### 📲 ဒေါင်းလုဒ်ရယူနိုင်သော ဖိုင်များ:
-* **⭐ တိုက်ရိုက်သွင်းယူနိုင်သော APK:** `JLPT_N3_Burmese_Vocab.apk`
-* **Release APK:** `KanjiKotoba-${BUILD_TAG}.apk`
-* **Checksums:** `sha256_checksums.txt`
+          ### Downloads:
+          - Recommended APK: JLPT_N3_Burmese_Vocab.apk
+          - Checksums: sha256_checksums.txt
 
----
-
-### ✨ အဓိက ပါဝင်သော အချက်များ:
-* **ဝေါဟာရ ၄,၅၈၄ ခု အပြည့်အစုံ** (Kanji, Hiragana, မြန်မာအဓိပ္ပာယ် နှင့် အသံထွက်)
-* **စစ်မှန်သော မေးခွန်းဟောင်း ၁,၃၅၇ ခု** (မြန်မာဘာသာပြန်နှင့်တကွ)
-* **3D Flashcards & Interactive Gestures**
-* **Daily Quiz & Streak Tracking**
-* **Google Sign-In & Cloud Sync**
-* **100% Offline Ready**
-EOF
+          ### Features:
+          - 4,584 Vocabulary & Kanji
+          - 1,357 Past Exam Questions with Burmese Translations
+          - 3D Flashcards & Daily Quiz
+          - 100% Offline Ready
+          EOF
 
           gh release create "$TAG" output_apk/* \
             --title "KanjiKotoba JLPT N3 Sensei ($TAG)" \
             --notes-file release_notes.md \
+            --target "${{ github.sha }}" \
             --clobber || echo "Release published or fallback completed"
