@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -57,9 +58,10 @@ jobs:
           echo "84831b9409646a918e30573bab4c9c91346d8abd" >> "$ANDROID_ROOT/licenses/android-sdk-preview-license" 2>/dev/null || true
           echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_ROOT/licenses/android-sdk-license" 2>/dev/null || true
 
-          if [ -x "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || true
-            "$ANDROID_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" 2>/dev/null || true
+          SDK_MGR=$(which sdkmanager 2>/dev/null || find "$ANDROID_ROOT" -name sdkmanager -type f 2>/dev/null | head -n 1)
+          if [ -n "$SDK_MGR" ] && [ -x "$SDK_MGR" ]; then
+            yes | "$SDK_MGR" --licenses 2>/dev/null || true
+            "$SDK_MGR" "platforms;android-36" "build-tools;36.0.0" 2>/dev/null || true
           fi
 
       - name: Setup Keystore & Signing
@@ -98,7 +100,7 @@ jobs:
           elif command -v gradle >/dev/null 2>&1 && gradle assembleDebug --no-daemon --stacktrace; then
             echo "assembleDebug built successfully with system gradle!"
           else
-            echo "Gradle assembleDebug had warnings or issues; fallback will be used."
+            echo "Gradle build had warnings or issues; fallback will be used if needed."
           fi
 
       - name: Determine Version and Organize Output APK Files
@@ -122,8 +124,12 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "Selected Release Tag: $TAG (App Version: $APP_VERSION)"
 
-          # Look for freshly built APKs
-          BUILT_APK=$(find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null | head -n 1)
+          # Look for freshly built signed APKs (prioritizing signed and debug APKs, ignoring unsigned)
+          BUILT_APK=$(find app/build/outputs/apk -name "*debug.apk" -type f 2>/dev/null | head -n 1)
+          if [ -z "$BUILT_APK" ] || [ ! -f "$BUILT_APK" ]; then
+            BUILT_APK=$(find app/build/outputs/apk -name "*.apk" ! -name "*unsigned*" -type f 2>/dev/null | head -n 1)
+          fi
+
           if [ -n "$BUILT_APK" ] && [ -f "$BUILT_APK" ]; then
             echo "Found fresh built APK: $BUILT_APK"
             cp "$BUILT_APK" "output_apk/JLPT_N3_Burmese_Vocab.apk"
@@ -156,59 +162,97 @@ jobs:
           path: output_apk/*
           retention-days: 60
 
-      - name: Create Git Tag and Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare Release Notes and Checksums
         run: |
           TAG="${RELEASE_TAG:-v1.1.0}"
-          echo "Publishing Release for Tag: $TAG"
+          echo "Preparing Release Notes for $TAG..."
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Tag commit in Git
-          git tag -f "$TAG" 2>/dev/null || true
-          git push origin "$TAG" --force 2>/dev/null || echo "Tag push skipped (handled via gh release)"
-
-          # Release notes markdown
           cat << 'EOF' > release_notes.md
-          ## 🇲🇲 JLPT N3 Burmese Vocab & Kanji Sensei
+          # 🇲🇲 KanjiKotoba - JLPT N3 Burmese Vocab & Kanji Sensei
 
-          ### 📦 Version Release: __TAG__
-          - **Version:** 1.1.0 (versionCode: 2)
-          - **Release Status:** Official Production Release
-          - **Signature:** Signed Android APK
+          ### 🏷️ Release Version: __TAG__ (versionCode: 2, versionName: "1.1.0")
+          > **Latest Official Release**: Compatible with Android 7.0 (API 24) up to Android 15/16 (API 36).
 
-          ### 📲 APK Downloads:
-          - **Main App APK:** `JLPT_N3_Burmese_Vocab.apk`
-          - **Version Tagged APK:** `KanjiKotoba-__TAG__.apk`
-          - **Checksums:** `sha256_checksums.txt`
+          ---
 
-          ### ✨ Key Features:
-          - 4,584 Vocabulary & Kanji with Audio Pronunciations
-          - 1,357 Past Exam Questions with Burmese Translations
-          - 3D Flashcards & Daily Quiz
-          - Google Sign-In & Firebase Cloud Sync
-          - 100% Offline Ready
+          ### 📲 Direct APK Downloads (Releases Tab):
+          | File Name | Description | Size |
+          |---|---|---|
+          | 📦 **`JLPT_N3_Burmese_Vocab.apk`** | Recommended Full Offline Vocab App | ~30 MB |
+          | 🏷️ **`KanjiKotoba-__TAG__.apk`** | Versioned APK Archive | ~30 MB |
+          | 🛡️ **`sha256_checksums.txt`** | SHA-256 Checksum Verification | Text |
+
+          ---
+
+          ### ✨ Key Features in this Release:
+          - **⚡ Quick Review Mode (NEW):** Fast-paced rapid recall mode that automatically flips flashcards after 3 seconds with a live countdown progress bar.
+          - **🎯 Enhanced Quiz Section:** 10 quiz modes, 3 interactive lifelines (50-50, Time Freeze, Hint), streak rewards, and detailed answer reviews.
+          - **🗂️ 3D Realistic Flashcards:** Smooth 3D spring flip physics, Furigana toggle, audio pronunciation, and Spaced Repetition System (SRS).
+          - **📚 4,584 Japanese Words & Kanji:** Complete JLPT N3 vocabulary with Burmese translations, phonetic readings, and example sentences.
+          - **📝 1,357 Past Exam Questions:** Authentic JLPT N3 test questions with detailed Myanmar explanations.
+          - **🌸 Japanese Washi & M3 Themes:** Custom minimalist aesthetic, OLED dark mode, and 100% offline functionality.
+
+          ---
+          *Built and released automatically by GitHub Actions CI/CD*
           EOF
 
           sed -i "s/__TAG__/$TAG/g" release_notes.md
 
-          # Create or update GitHub Release
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists. Updating release assets..."
-            gh release upload "$TAG" output_apk/* --clobber
-            gh release edit "$TAG" --title "KanjiKotoba JLPT N3 Sensei ($TAG)" --notes-file release_notes.md
-          else
-            echo "Creating new GitHub Release: $TAG"
+      - name: Publish APK to GitHub Releases Tab
+        id: gh_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "KanjiKotoba JLPT N3 Sensei (${{ env.RELEASE_TAG }})"
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          make_latest: "true"
+          files: |
+            output_apk/*.apk
+            output_apk/*.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Fallback Release via GitHub CLI
+        if: steps.gh_release.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${RELEASE_TAG:-v1.1.0}"
+          echo "Verifying Release in GitHub Releases Tab for $TAG..."
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG" 2>/dev/null || true
+          git push origin "$TAG" --force 2>/dev/null || echo "Tag push skipped"
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating release $TAG via GitHub CLI..."
             gh release create "$TAG" output_apk/* \
               --title "KanjiKotoba JLPT N3 Sensei ($TAG)" \
               --notes-file release_notes.md \
               --target "${{ github.sha }}" \
-              --clobber || gh release upload "$TAG" output_apk/* --clobber || true
+              --latest \
+              --clobber || true
+          else
+            echo "Release $TAG exists. Ensuring all APK assets are uploaded..."
+            gh release upload "$TAG" output_apk/* --clobber || true
+            gh release edit "$TAG" --latest --notes-file release_notes.md || true
           fi
 
-          echo "### 🚀 Release Successfully Created!" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release Tag:** \`$TAG\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **App Version:** \`1.1.0\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Downloads:** \`JLPT_N3_Burmese_Vocab.apk\`, \`KanjiKotoba-${TAG}.apk\`" >> $GITHUB_STEP_SUMMARY
+      - name: Post Job Summary
+        if: always()
+        run: |
+          TAG="${RELEASE_TAG:-v1.1.0}"
+          echo "### 🚀 APK Build & Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "output_apk/JLPT_N3_Burmese_Vocab.apk" ]; then
+            echo "✅ **APK built and prepared successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Tag:** \`${TAG}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **App Version:** \`1.1.0\` (versionCode: 2)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Available under:** GitHub Releases tab and Workflow Artifacts." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **No APK generated in this run.**" >> $GITHUB_STEP_SUMMARY
+          fi

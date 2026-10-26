@@ -12,7 +12,8 @@ data class ReminderSettings(
     val reminderMinute: Int = 0,
     val soundEnabled: Boolean = true,
     val motivationalQuotesEnabled: Boolean = true,
-    val isSmartReminderEnabled: Boolean = true // Smart reminder: only notifies if daily study goal is not yet completed
+    val isSmartReminderEnabled: Boolean = true, // Smart reminder: only notifies if daily study goal is not yet completed
+    val isSrsReviewReminderEnabled: Boolean = true // Alerts when SRS-based Kanji cards are due for review
 ) {
     val formattedTime: String
         get() {
@@ -47,7 +48,8 @@ class ReminderPreferences(context: Context) {
         reminderMinute: Int,
         soundEnabled: Boolean = true,
         motivationalQuotesEnabled: Boolean = true,
-        isSmartReminderEnabled: Boolean = true
+        isSmartReminderEnabled: Boolean = true,
+        isSrsReviewReminderEnabled: Boolean = true
     ) {
         prefs.edit().apply {
             putBoolean(KEY_ENABLED, isEnabled)
@@ -56,6 +58,7 @@ class ReminderPreferences(context: Context) {
             putBoolean(KEY_SOUND, soundEnabled)
             putBoolean(KEY_QUOTES, motivationalQuotesEnabled)
             putBoolean(KEY_SMART_REMINDER, isSmartReminderEnabled)
+            putBoolean(KEY_SRS_REMINDER, isSrsReviewReminderEnabled)
             apply()
         }
         _settingsFlow.value = loadSettings()
@@ -69,7 +72,8 @@ class ReminderPreferences(context: Context) {
             reminderMinute = current.reminderMinute,
             soundEnabled = current.soundEnabled,
             motivationalQuotesEnabled = current.motivationalQuotesEnabled,
-            isSmartReminderEnabled = current.isSmartReminderEnabled
+            isSmartReminderEnabled = current.isSmartReminderEnabled,
+            isSrsReviewReminderEnabled = current.isSrsReviewReminderEnabled
         )
     }
 
@@ -81,7 +85,21 @@ class ReminderPreferences(context: Context) {
             reminderMinute = current.reminderMinute,
             soundEnabled = current.soundEnabled,
             motivationalQuotesEnabled = current.motivationalQuotesEnabled,
-            isSmartReminderEnabled = isSmart
+            isSmartReminderEnabled = isSmart,
+            isSrsReviewReminderEnabled = current.isSrsReviewReminderEnabled
+        )
+    }
+
+    fun setSrsReviewReminderEnabled(enabled: Boolean) {
+        val current = loadSettings()
+        updateSettings(
+            isEnabled = current.isEnabled,
+            reminderHour = current.reminderHour,
+            reminderMinute = current.reminderMinute,
+            soundEnabled = current.soundEnabled,
+            motivationalQuotesEnabled = current.motivationalQuotesEnabled,
+            isSmartReminderEnabled = current.isSmartReminderEnabled,
+            isSrsReviewReminderEnabled = enabled
         )
     }
 
@@ -93,7 +111,8 @@ class ReminderPreferences(context: Context) {
             reminderMinute = minute,
             soundEnabled = current.soundEnabled,
             motivationalQuotesEnabled = current.motivationalQuotesEnabled,
-            isSmartReminderEnabled = current.isSmartReminderEnabled
+            isSmartReminderEnabled = current.isSmartReminderEnabled,
+            isSrsReviewReminderEnabled = current.isSrsReviewReminderEnabled
         )
     }
 
@@ -104,7 +123,8 @@ class ReminderPreferences(context: Context) {
             reminderMinute = prefs.getInt(KEY_MINUTE, 0),
             soundEnabled = prefs.getBoolean(KEY_SOUND, true),
             motivationalQuotesEnabled = prefs.getBoolean(KEY_QUOTES, true),
-            isSmartReminderEnabled = prefs.getBoolean(KEY_SMART_REMINDER, true)
+            isSmartReminderEnabled = prefs.getBoolean(KEY_SMART_REMINDER, true),
+            isSrsReviewReminderEnabled = prefs.getBoolean(KEY_SRS_REMINDER, true)
         )
     }
 
@@ -115,5 +135,6 @@ class ReminderPreferences(context: Context) {
         private const val KEY_SOUND = "key_reminder_sound"
         private const val KEY_QUOTES = "key_reminder_quotes"
         private const val KEY_SMART_REMINDER = "key_smart_reminder"
+        private const val KEY_SRS_REMINDER = "key_srs_reminder"
     }
 }

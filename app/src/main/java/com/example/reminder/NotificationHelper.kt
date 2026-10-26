@@ -14,13 +14,20 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.MainActivity
 import com.example.R
+import com.example.data.model.VocabCard
 import kotlin.random.Random
 
 object NotificationHelper {
     const val CHANNEL_ID = "kanji_study_reminders"
     const val CHANNEL_NAME = "Daily Study Reminders"
     const val CHANNEL_DESCRIPTION = "Notifications to remind you of daily JLPT N3 vocabulary reviews and keep your study streak active."
+
+    const val SRS_CHANNEL_ID = "kanji_srs_due_reminders"
+    const val SRS_CHANNEL_NAME = "SRS Kanji Review Alerts"
+    const val SRS_CHANNEL_DESCRIPTION = "Alerts you right when your SRS-based Kanji cards are due for review so you never forget vocabulary."
+
     const val NOTIFICATION_ID = 1001
+    const val SRS_NOTIFICATION_ID = 1002
 
     private val MOTIVATIONAL_PROVERBS = listOf(
         "継続は力なり (Continuity is power — Persistence pays off)" to "A few minutes of spaced repetition today locks words into long-term memory.",
@@ -33,16 +40,27 @@ object NotificationHelper {
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+
+            // 1. Daily Study Reminders Channel
+            val dailyChannel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = CHANNEL_DESCRIPTION
                 enableLights(true)
                 lightColor = Color.parseColor("#E65100")
                 enableVibration(true)
                 setShowBadge(true)
             }
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(dailyChannel)
+
+            // 2. Dedicated SRS Review Alerts Channel
+            val srsChannel = NotificationChannel(SRS_CHANNEL_ID, SRS_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = SRS_CHANNEL_DESCRIPTION
+                enableLights(true)
+                lightColor = Color.parseColor("#C62828") // Japanese Crimson
+                enableVibration(true)
+                setShowBadge(true)
+            }
+            notificationManager.createNotificationChannel(srsChannel)
         }
     }
 
@@ -125,6 +143,96 @@ object NotificationHelper {
             notificationManagerCompat.notify(NOTIFICATION_ID, builder.build())
         } catch (e: SecurityException) {
             // In case permission was revoked in settings
+        }
+    }
+
+    /**
+     * Alerts the user specifically when their SRS-based Kanji cards are due for review.
+     * Can trigger in the background via WorkManager when cards reach their review interval.
+     */
+    fun showSrsDueNotification(
+        context: Context,
+        dueCards: List<VocabCard>,
+        totalDueCount: Int
+    ) {
+        createNotificationChannel(context)
+
+        // Check notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+
+        val count = if (totalDueCount > 0) totalDueCount else dueCards.size
+        if (count <= 0) return
+
+        val title = "⏰ $count Kanji Cards Due for SRS Review!"
+
+        val sampleKanji = dueCards.take(5).joinToString("・") { it.kanji }
+        val contentText = if (sampleKanji.isNotBlank()) {
+            "Review $sampleKanji to lock them into long-term memory."
+        } else {
+            "You have $count spaced repetition cards ready for recall review."
+        }
+
+        val launchIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("EXTRA_NAVIGATE_TO", "study")
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            SRS_NOTIFICATION_ID,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val bigText = buildString {
+            append("Spaced Repetition interval reached! Reviewing right now ensures maximum memory retention.\n\n")
+            if (dueCards.isNotEmpty()) {
+                append("🎴 Ready in your SRS Queue:\n")
+                dueCards.take(4).forEachIndexed { index, card ->
+                    append("${index + 1}. ${card.kanji} (${card.reading}) - ${card.meaningBurmese}\n")
+                }
+                if (count > 4) {
+                    append("... and ${count - 4} more cards waiting!\n\n")
+                }
+            }
+            append("⚡ A quick 3-minute review session keeps your recall sharp!")
+        }
+
+        val builder = NotificationCompat.Builder(context, SRS_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(contentText)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .setBigContentTitle(title)
+                    .bigText(bigText)
+                    .setSummaryText("SRS Kanji Due")
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setColor(0xFFC62828.toInt()) // Japanese Crimson
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .addAction(
+                R.mipmap.ic_launcher,
+                "အခုပဲ ကျက်မည် (Review Now)",
+                pendingIntent
+            )
+
+        val notificationManagerCompat = NotificationManagerCompat.from(context)
+        try {
+            notificationManagerCompat.notify(SRS_NOTIFICATION_ID, builder.build())
+        } catch (e: SecurityException) {
+            // Notification permission revoked
         }
     }
 }

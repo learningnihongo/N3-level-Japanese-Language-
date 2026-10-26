@@ -798,7 +798,7 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     FilledTonalButton(
-                                        onClick = { onNavigateToFlashcard() },
+                                        onClick = { onStartStudy(listOf(card)) },
                                         shape = RoundedCornerShape(10.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                         modifier = Modifier.weight(1f)

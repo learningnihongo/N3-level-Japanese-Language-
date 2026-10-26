@@ -23,6 +23,7 @@ import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -506,6 +507,12 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     private val _autoPlaySpeedSec = MutableStateFlow(4)
     val autoPlaySpeedSec: StateFlow<Int> = _autoPlaySpeedSec.asStateFlow()
 
+    private val _isQuickReviewMode = MutableStateFlow(false)
+    val isQuickReviewMode: StateFlow<Boolean> = _isQuickReviewMode.asStateFlow()
+
+    private val _quickReviewRemainingMillis = MutableStateFlow(3000L)
+    val quickReviewRemainingMillis: StateFlow<Long> = _quickReviewRemainingMillis.asStateFlow()
+
     private val _flashcardFontScale = MutableStateFlow(1.0f)
     val flashcardFontScale: StateFlow<Float> = _flashcardFontScale.asStateFlow()
 
@@ -516,6 +523,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     val speechRate: StateFlow<Float> = ttsHelper.speechRate
 
     private var autoPlayJob: Job? = null
+    private var quickReviewJob: Job? = null
 
     // ------------------------------------------------------------------------
     // Study Operations
@@ -527,6 +535,9 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         _isSessionFinished.value = false
         _studyMode.value = mode
         _sessionStats.value = SessionStudyStats()
+        if (_isQuickReviewMode.value) {
+            startQuickReviewTimer()
+        }
     }
 
     fun startDueCardsStudySession(mode: FlashcardStudyMode = FlashcardStudyMode.JP_TO_MY, onSuccess: ((List<VocabCard>) -> Unit)? = null) {
@@ -567,13 +578,28 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun flipCard() {
-        _isCardFlipped.value = !_isCardFlipped.value
+        val nextFlipped = !_isCardFlipped.value
+        _isCardFlipped.value = nextFlipped
+        if (nextFlipped) {
+            quickReviewJob?.cancel()
+            val currentCard = _studyDeck.value.getOrNull(_currentCardIndex.value)
+            if (currentCard != null && voicePrefs.settings.autoPlayAudioOnFlip) {
+                speakJapanese(currentCard.reading)
+            }
+        } else {
+            if (_isQuickReviewMode.value) {
+                startQuickReviewTimer()
+            }
+        }
     }
 
     fun previousCard() {
         if (_currentCardIndex.value > 0) {
             _currentCardIndex.value--
             _isCardFlipped.value = false
+            if (_isQuickReviewMode.value) {
+                startQuickReviewTimer()
+            }
         }
     }
 
@@ -581,6 +607,9 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         if (index in _studyDeck.value.indices) {
             _currentCardIndex.value = index
             _isCardFlipped.value = false
+            if (_isQuickReviewMode.value) {
+                startQuickReviewTimer()
+            }
         }
     }
 
@@ -595,6 +624,7 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     fun rateFlashcardRecall(card: VocabCard, rating: ReviewRating) {
         viewModelScope.launch {
             repository.processReview(card, rating)
+            com.example.reminder.SrsReminderScheduler.scheduleNextDueCheck(getApplication())
             val currentStats = _sessionStats.value
             val isSuccess = rating != ReviewRating.AGAIN
             val updatedMistakes = if (!isSuccess) currentStats.mistakeCards + card else currentStats.mistakeCards
@@ -614,9 +644,14 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
             if (_currentCardIndex.value < _studyDeck.value.size - 1) {
                 _currentCardIndex.value++
                 _isCardFlipped.value = false
+                if (_isQuickReviewMode.value) {
+                    startQuickReviewTimer()
+                }
             } else {
                 _isSessionFinished.value = true
                 stopAutoPlay()
+                quickReviewJob?.cancel()
+                quickReviewJob = null
             }
         }
     }
@@ -626,6 +661,9 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         _isCardFlipped.value = false
         _isSessionFinished.value = false
         _sessionStats.value = SessionStudyStats()
+        if (_isQuickReviewMode.value) {
+            startQuickReviewTimer()
+        }
     }
 
     fun restartMistakesOnly() {
@@ -1035,6 +1073,66 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ------------------------------------------------------------------------
+    // Quick Review Mode (3-Second Auto-Flip for Rapid Recall)
+    // ------------------------------------------------------------------------
+    fun toggleQuickReviewMode(enabled: Boolean? = null) {
+        val target = enabled ?: !_isQuickReviewMode.value
+        _isQuickReviewMode.value = target
+        if (target) {
+            stopAutoPlay()
+            if (!_isCardFlipped.value && !_isSessionFinished.value) {
+                startQuickReviewTimer()
+            }
+        } else {
+            quickReviewJob?.cancel()
+            quickReviewJob = null
+            _quickReviewRemainingMillis.value = 3000L
+        }
+    }
+
+    fun startQuickReviewTimer() {
+        quickReviewJob?.cancel()
+        if (!_isQuickReviewMode.value || _isCardFlipped.value || _isSessionFinished.value) return
+        _quickReviewRemainingMillis.value = 3000L
+        quickReviewJob = viewModelScope.launch {
+            val totalDuration = 3000L
+            val startTime = System.currentTimeMillis()
+            while (isActive && !_isCardFlipped.value && !_isSessionFinished.value) {
+                val elapsed = System.currentTimeMillis() - startTime
+                val remaining = (totalDuration - elapsed).coerceAtLeast(0L)
+                _quickReviewRemainingMillis.value = remaining
+                if (remaining <= 0L) {
+                    _isCardFlipped.value = true
+                    val currentCard = _studyDeck.value.getOrNull(_currentCardIndex.value)
+                    if (currentCard != null && voicePrefs.settings.autoPlayAudioOnFlip) {
+                        speakJapanese(currentCard.reading)
+                    }
+                    break
+                }
+                delay(40L)
+            }
+        }
+    }
+
+    fun stopQuickReviewTimer() {
+        quickReviewJob?.cancel()
+        quickReviewJob = null
+        _quickReviewRemainingMillis.value = 3000L
+    }
+
+    fun shuffleStudyDeck(mode: com.example.ui.components.FlashcardShuffleMode) {
+        val current = _studyDeck.value
+        if (current.isNotEmpty()) {
+            _studyDeck.value = com.example.ui.components.FlashcardShuffleMode.applyShuffle(current, mode)
+            _currentCardIndex.value = 0
+            _isCardFlipped.value = false
+            if (_isQuickReviewMode.value) {
+                startQuickReviewTimer()
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
     // Filters & Queries
     // ------------------------------------------------------------------------
     fun setSearchQuery(query: String) {
@@ -1105,8 +1203,19 @@ class VocabViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setSrsReminderEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            reminderPrefs.setSrsReviewReminderEnabled(enabled)
+            com.example.reminder.SrsReminderScheduler.rescheduleFromPreferences(getApplication())
+        }
+    }
+
     fun triggerTestReminder() {
         ReminderScheduler.sendImmediateTestReminder(getApplication())
+    }
+
+    fun triggerTestSrsReminder() {
+        com.example.reminder.SrsReminderScheduler.sendImmediateTestSrsReminder(getApplication())
     }
 
     override fun onCleared() {

@@ -114,9 +114,12 @@ fun MainApp(
             Screen.Profile
         )
 
+        val quizState by quizViewModel.quizState.collectAsState()
+        val isQuizActiveOrFinished = currentRoute == Screen.Quiz.route && (quizState.isQuizActive || quizState.isFinished)
         val isFullScreenStudy = currentRoute == Screen.Study.route ||
             currentRoute == Screen.QuizHistory.route ||
-            currentRoute == Screen.CustomDecks.route
+            currentRoute == Screen.CustomDecks.route ||
+            isQuizActiveOrFinished
         val systemIsDark = isSystemInDarkTheme()
         val isCurrentlyDark = when (themeSettings.themeMode) {
             ThemeMode.SYSTEM -> systemIsDark
@@ -126,17 +129,17 @@ fun MainApp(
 
         Scaffold(
             topBar = {
-                if (!isFullScreenStudy) {
+                if (!isFullScreenStudy && currentRoute != Screen.Profile.route) {
                     val profile by vocabViewModel.userProfile.collectAsState()
                     val (kanjiSeal, routeTitle, routeSub) = when (currentRoute) {
-                        Screen.Home.route -> Triple("学", "KotoKanji こと漢字", "JLPT N3 Myanmar • Flashcards")
+                        Screen.Home.route -> Triple("学", "KotoKanji こと漢字", "Myanmar • Flashcards & Quiz")
                         Screen.Browse.route -> Triple("語", "Word Library 単語帳", "Search, Bookmark & Manage Vocabulary")
                         Screen.Stats.route -> Triple("計", "Analytics 統計", "SRS Retention, Streaks & Mastery")
                         Screen.Dashboard.route -> Triple("図", "Progress Dashboard ダッシュボード", "Visual Progress & Streak Metrics")
                         Screen.Quiz.route -> Triple("試", "Quiz Arena 試練場", "Timed Quizzes & Review Tests")
-                        Screen.Profile.route -> Triple("友", "Student Profile プロフィール", "Study Goals, Audio & Theme Preferences")
-                        Screen.PastExams.route -> Triple("問", "Past Exams 過去問", "JLPT N3 Past Exam Papers (2014 - 2025)")
-                        else -> Triple("学", "KotoKanji こと漢字", "JLPT N3 Myanmar • Flashcards")
+                        Screen.Profile.route -> Triple("友", "Student Profile", "Study Goals & Settings")
+                        Screen.PastExams.route -> Triple("問", "Past Exams 過去問", "Past Exam Papers (2014 - 2025)")
+                        else -> Triple("学", "KotoKanji こと漢字", "Myanmar • Flashcards")
                     }
 
                     Surface(
@@ -199,7 +202,7 @@ fun MainApp(
                                 )
                             }
 
-                            // Right: Theme Mode Switch + JLPT Level Indicator Badge
+                            // Right: Theme Mode Switch
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -262,25 +265,6 @@ fun MainApp(
                                         contentDescription = if (isCurrentlyDark) "Switch to Light Mode" else "Switch to Dark Mode",
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-                                    )
-                                ) {
-                                    Text(
-                                        text = "JLPT ${profile?.targetJlptLevel ?: "N3"}",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp
-                                        ),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                                     )
                                 }
                             }
@@ -386,7 +370,9 @@ fun MainApp(
                                 navController.navigate(Screen.Stats.route)
                             },
                             onNavigateToFlashcard = {
-                                navController.navigate(Screen.Flashcard.route)
+                                vocabViewModel.startDueCardsStudySession {
+                                    navController.navigate(Screen.Study.route)
+                                }
                             },
                             onNavigateToKanjiProgress = {
                                 navController.navigate(Screen.KanjiProgress.route)
@@ -453,10 +439,17 @@ fun MainApp(
                             quizViewModel = quizViewModel,
                             vocabViewModel = vocabViewModel,
                             onBackClick = {
-                                navController.popBackStack()
+                                if (quizViewModel.quizState.value.isQuizActive || quizViewModel.quizState.value.isFinished) {
+                                    quizViewModel.exitQuiz()
+                                } else {
+                                    navController.popBackStack()
+                                }
                             },
-                            onQuizFinished = { score, total, xpEarned ->
-                                navController.popBackStack()
+                            onNavigateToHistory = {
+                                navController.navigate(Screen.QuizHistory.route)
+                            },
+                            onQuizFinished = { _, _, _ ->
+                                // Result is auto-saved in Room database
                             }
                         )
                     }
@@ -510,13 +503,15 @@ fun MainApp(
                     }
 
                     composable(Screen.Flashcard.route) {
-                        FlashcardScreen(
-                            customCards = emptyList(),
-                            onBackClick = {
+                        LaunchedEffect(Unit) {
+                            if (vocabViewModel.studyDeck.value.isEmpty()) {
+                                vocabViewModel.startDueCardsStudySession()
+                            }
+                        }
+                        FlashcardStudyScreen(
+                            vocabViewModel = vocabViewModel,
+                            onNavigateBack = {
                                 navController.popBackStack()
-                            },
-                            onReviewCompleted = { _ ->
-                                // Completed review
                             }
                         )
                     }

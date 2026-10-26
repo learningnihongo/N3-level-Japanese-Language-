@@ -2,11 +2,13 @@ package com.example.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -42,20 +44,24 @@ fun FlashcardStudyScreen(
     val studyMode by vocabViewModel.studyMode.collectAsState()
     val showFurigana by vocabViewModel.showFurigana.collectAsState()
     val isAutoPlay by vocabViewModel.isAutoPlay.collectAsState()
+    val isQuickReviewMode by vocabViewModel.isQuickReviewMode.collectAsState()
+    val quickReviewRemainingMillis by vocabViewModel.quickReviewRemainingMillis.collectAsState()
     val sessionStats by vocabViewModel.sessionStats.collectAsState()
     val fontScale by vocabViewModel.flashcardFontScale.collectAsState()
     val themeSettings by vocabViewModel.themeSettings.collectAsState()
+    val isSpeaking by vocabViewModel.isSpeaking.collectAsState()
 
     var showNoteDialog by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var showSrsScheduleSheet by remember { mutableStateOf(false) }
     var showCompoundLookupSheet by remember { mutableStateOf(false) }
+    var showDeckSettingsSheet by remember { mutableStateOf(false) }
 
-    val rotation by animateFloatAsState(
-        targetValue = if (isFlipped) 180f else 0f,
-        animationSpec = tween(durationMillis = 350),
-        label = "card_rotation"
-    )
+    LaunchedEffect(Unit) {
+        if (deck.isEmpty() && !isFinished) {
+            vocabViewModel.startDueCardsStudySession()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -92,12 +98,18 @@ fun FlashcardStudyScreen(
                     IconButton(onClick = { showSrsScheduleSheet = true }) {
                         Icon(Icons.Filled.Schedule, contentDescription = "SRS Schedule")
                     }
+                    IconButton(
+                        onClick = { showDeckSettingsSheet = true },
+                        modifier = Modifier.testTag("deck_settings_button")
+                    ) {
+                        Icon(Icons.Filled.Tune, contentDescription = "Deck Settings")
+                    }
                 }
             )
         },
         modifier = modifier
     ) { innerPadding ->
-        if (deck.isEmpty() || isFinished) {
+        if (isFinished) {
             // Session Completion Screen
             Box(
                 modifier = Modifier
@@ -155,6 +167,25 @@ fun FlashcardStudyScreen(
                     }
                 }
             }
+        } else if (deck.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = "3D ဖလက်ရှ်ကတ်များကို ပြင်ဆင်နေပါသည်...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         } else {
             val card = deck.getOrNull(currentIndex) ?: deck.first()
 
@@ -172,13 +203,39 @@ fun FlashcardStudyScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AssistChip(
-                        onClick = { showCompoundLookupSheet = true },
-                        label = { Text("Compound Lookup") },
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilterChip(
+                            selected = isQuickReviewMode,
+                            onClick = { vocabViewModel.toggleQuickReviewMode() },
+                            label = { Text(if (isQuickReviewMode) "⚡ 3s Flip" else "Quick Review", fontSize = 12.sp) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Bolt,
+                                    contentDescription = null,
+                                    tint = if (isQuickReviewMode) Color(0xFFFF9800) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            modifier = Modifier.testTag("quick_review_chip")
+                        )
 
-                    Row {
+                        AssistChip(
+                            onClick = { showCompoundLookupSheet = true },
+                            label = { Text("Lookup") },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { showDeckSettingsSheet = true },
+                            modifier = Modifier.testTag("deck_settings_icon_button")
+                        ) {
+                            Icon(Icons.Filled.Tune, contentDescription = "Deck Settings", tint = MaterialTheme.colorScheme.primary)
+                        }
                         IconButton(onClick = { vocabViewModel.toggleBookmark(card) }) {
                             Icon(
                                 if (card.isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
@@ -192,109 +249,90 @@ fun FlashcardStudyScreen(
                     }
                 }
 
-                // 3D Card Face with GraphicsLayer Flip
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(vertical = 12.dp)
-                        .graphicsLayer {
-                            rotationY = rotation
-                            cameraDistance = 14f * density
-                        }
-                        .clickable { vocabViewModel.flipCard() },
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Box(
+                // ⚡ Quick Review Mode Countdown Banner
+                if (isQuickReviewMode) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (!isFlipped) Color(0xFFFFF3E0) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, if (!isFlipped) Color(0xFFFFB74D) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(20.dp),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
-                        if (rotation <= 90f) {
-                            // Front Face
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (showFurigana && card.reading.isNotBlank()) {
-                                    Text(
-                                        text = card.reading,
-                                        fontSize = (18 * fontScale).sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        textAlign = TextAlign.Center
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Bolt,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF9800),
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = if (!isFlipped) "⚡ Quick Review: Card auto-flips in 3s" else "⚡ Quick Review: Rate recall to continue",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (!isFlipped) Color(0xFFE65100) else MaterialTheme.colorScheme.primary
+                                    )
                                 }
-                                Text(
-                                    text = card.kanji,
-                                    fontSize = (38 * fontScale).sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                IconButton(onClick = { vocabViewModel.speakCard(card) }) {
-                                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Speak", tint = MaterialTheme.colorScheme.primary)
+
+                                if (!isFlipped) {
+                                    Text(
+                                        text = "${((quickReviewRemainingMillis + 999) / 1000).coerceAtLeast(1)}s",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFFE65100)
+                                    )
                                 }
-                                Text(
-                                    text = "Tap to reveal answer",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
                             }
-                        } else {
-                            // Back Face (Mirrored)
-                            Column(
-                                modifier = Modifier.graphicsLayer { rotationY = 180f },
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = card.meaningBurmese,
-                                    fontSize = (22 * fontScale).sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    textAlign = TextAlign.Center
+
+                            if (!isFlipped) {
+                                LinearProgressIndicator(
+                                    progress = { (quickReviewRemainingMillis / 3000f).coerceIn(0f, 1f) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(4.dp),
+                                    color = Color(0xFFFF9800),
+                                    trackColor = Color(0xFFFFE0B2)
                                 )
-                                if (card.partOfSpeech.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.secondaryContainer
-                                    ) {
-                                        Text(
-                                            text = card.partOfSpeech,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                                if (card.exampleSentence.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = card.exampleSentence,
-                                        fontSize = (15 * fontScale).sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    if (card.exampleSentenceBurmese.isNotBlank()) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = card.exampleSentenceBurmese,
-                                            fontSize = (14 * fontScale).sp,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
                 }
+
+                // 3D Card Face with GraphicsLayer Flip & realistic spring physics
+                StudyFlashcardCard(
+                    card = card,
+                    isFlipped = isFlipped,
+                    onFlip = { vocabViewModel.flipCard() },
+                    studyMode = studyMode,
+                    fontScale = fontScale,
+                    showFurigana = showFurigana,
+                    showRomajiHint = false,
+                    isSpeaking = isSpeaking,
+                    onSpeakWord = { vocabViewModel.speakJapanese(card.kanji) },
+                    onSpeakReading = { vocabViewModel.speakJapanese(card.reading) },
+                    onSpeakSlow = { vocabViewModel.speakJapanese(card.kanji, rate = 0.7f) },
+                    onSpeakSentence = { if (card.exampleSentence.isNotBlank()) vocabViewModel.speakJapanese(card.exampleSentence) },
+                    onToggleBookmark = { vocabViewModel.toggleBookmark(card) },
+                    onToggleFurigana = { vocabViewModel.toggleFurigana() },
+                    onOpenNoteDialog = { showNoteDialog = true },
+                    onOpenCompoundLookup = { showCompoundLookupSheet = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(vertical = 8.dp)
+                )
 
                 // Bottom SRS Rating Buttons Bar
                 if (isFlipped) {
@@ -310,7 +348,10 @@ fun FlashcardStudyScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Again", color = Color.White)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Again", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("၁ ရက်", color = Color.White.copy(alpha = 0.85f), fontSize = 10.5.sp)
+                            }
                         }
                         Button(
                             onClick = { vocabViewModel.rateCurrentCard(ReviewRating.HARD) },
@@ -318,7 +359,10 @@ fun FlashcardStudyScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Hard", color = Color.White)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Hard", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("၃ ရက်", color = Color.White.copy(alpha = 0.85f), fontSize = 10.5.sp)
+                            }
                         }
                         Button(
                             onClick = { vocabViewModel.rateCurrentCard(ReviewRating.GOOD) },
@@ -326,7 +370,10 @@ fun FlashcardStudyScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Good", color = Color.White)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Good", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("၇ ရက်", color = Color.White.copy(alpha = 0.85f), fontSize = 10.5.sp)
+                            }
                         }
                         Button(
                             onClick = { vocabViewModel.rateCurrentCard(ReviewRating.EASY) },
@@ -334,7 +381,10 @@ fun FlashcardStudyScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Easy", color = Color.White)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Easy", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("၁၄ ရက်", color = Color.White.copy(alpha = 0.85f), fontSize = 10.5.sp)
+                            }
                         }
                     }
                 } else {
@@ -347,16 +397,25 @@ fun FlashcardStudyScreen(
                     ) {
                         OutlinedButton(
                             onClick = { vocabViewModel.previousCard() },
-                            enabled = currentIndex > 0
+                            enabled = currentIndex > 0,
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Previous")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("ရှေ့သို့")
                         }
 
                         Button(
                             onClick = { vocabViewModel.flipCard() },
-                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 10.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Text("Flip Card")
+                            Icon(Icons.Default.Flip, contentDescription = null, modifier = Modifier.size(17.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("3D အဖြေလှန်မည် (Flip)", fontWeight = FontWeight.Bold)
                         }
 
                         IconButton(onClick = { vocabViewModel.toggleAutoPlay() }) {
@@ -396,6 +455,13 @@ fun FlashcardStudyScreen(
                     vocabViewModel = vocabViewModel,
                     onDismiss = { showSrsScheduleSheet = false },
                     onStartReview = { showSrsScheduleSheet = false }
+                )
+            }
+
+            if (showDeckSettingsSheet) {
+                FlashcardDeckSettingsSheet(
+                    vocabViewModel = vocabViewModel,
+                    onDismiss = { showDeckSettingsSheet = false }
                 )
             }
         }
